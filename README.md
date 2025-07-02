@@ -1,5 +1,5 @@
 #
-![moleXa Logo](static/android-chrome-512x512.png)
+![moleXa Logo](public/android-chrome-512x512.png)
 
 # moleXa-backend
 
