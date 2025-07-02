@@ -39,7 +39,6 @@ app.use(express.json());
 
 // ⚡ CRITICAL: Serve static files FIRST
 app.use(express.static(path.join(__dirname, '..', 'public')));
-app.use('/static', express.static(path.join(__dirname, '..', 'public')));
 
 
 
