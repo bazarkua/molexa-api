@@ -1223,28 +1223,28 @@ app.use('*', (req, res) => {
 });
 
 // Start server
-app.listen(port, () => {
-  console.log(`
-🚀 Enhanced PubChem Educational Proxy Started!
-📍 Server running on: http://localhost:${port}
-🏥 Health check: http://localhost:${port}/health
-📊 Live Dashboard: http://localhost:${port}/dashboard
-📈 Analytics API: http://localhost:${port}/analytics
-📚 API docs: http://localhost:${port}/api/docs
+// app.listen(port, () => {
+//   console.log(`
+// 🚀 Enhanced PubChem Educational Proxy Started!
+// 📍 Server running on: http://localhost:${port}
+// 🏥 Health check: http://localhost:${port}/health
+// 📊 Live Dashboard: http://localhost:${port}/dashboard
+// 📈 Analytics API: http://localhost:${port}/analytics
+// 📚 API docs: http://localhost:${port}/api/docs
 
-🎓 Educational Features:
-   • Comprehensive molecular properties with explanations
-   • Safety and toxicity information
-   • Pharmacology and drug data  
-   • Live usage analytics and monitoring
+// 🎓 Educational Features:
+//    • Comprehensive molecular properties with explanations
+//    • Safety and toxicity information
+//    • Pharmacology and drug data  
+//    • Live usage analytics and monitoring
 
-🧪 Try the API:
-   • /api/pubchem/compound/aspirin/educational?type=name
-   • /api/pubchem/compound/cid/2244/property/MolecularFormula/JSON
+// 🧪 Try the API:
+//    • /api/pubchem/compound/aspirin/educational?type=name
+//    • /api/pubchem/compound/cid/2244/property/MolecularFormula/JSON
 
-📊 Monitor usage at: /dashboard
-  `);
-});
+// 📊 Monitor usage at: /dashboard
+//   `);
+// });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
@@ -1258,3 +1258,5 @@ process.on('SIGINT', () => {
   sseConnections.forEach(connection => connection.end());
   process.exit(0);
 });
+
+module.exports = app;
