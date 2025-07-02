@@ -739,7 +739,7 @@ async function fetchFromPubChem(path) {
 // Serve the integrated documentation page with live analytics
 app.get('/docs', (req, res) => {
   try {
-    const docsPath = path.join(__dirname, 'api-docs.html');
+    const docsPath = path.join(__dirname, 'docs.html');
     
     // Check if the integrated docs file exists
     if (fs.existsSync(docsPath)) {
@@ -770,7 +770,7 @@ app.get('/docs', (req, res) => {
                                 <div class="alert alert-info" role="alert">
                                     <i class="fas fa-lightbulb me-2"></i>
                                     <strong>Setup Instructions:</strong><br>
-                                    Save the integrated HTML documentation as <code>api-docs.html</code> in your project root directory
+                                    Save the integrated HTML documentation as <code>docs.html</code> in your project root directory
                                     to enable the full interactive documentation with live analytics.
                                 </div>
                                 <div class="d-grid gap-2 d-md-block">
@@ -811,7 +811,7 @@ app.get('/docs', (req, res) => {
     console.error('❌ Error serving documentation:', error);
     res.status(500).json({
       error: 'Failed to serve documentation',
-      message: 'Please ensure api-docs.html exists in the project root directory',
+      message: 'Please ensure docs.html exists in the project root directory',
       fallback: 'Visit /api/docs for JSON documentation'
     });
   }
