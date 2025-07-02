@@ -38,7 +38,7 @@ app.use(express.json());
 
 
 // ⚡ CRITICAL: Serve static files FIRST
-app.use(express.static(path.join(__dirname, '..', 'static')));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 
 
@@ -732,7 +732,7 @@ async function fetchFromPubChem(path) {
 // Serve the integrated documentation page with live analytics
 app.get('/docs', (req, res) => {
   try {
-    const docsPath = path.join(__dirname, '..', 'static', 'docs.html');  
+    const docsPath = path.join(__dirname, '..', 'public', 'docs.html');  
     // Check if the integrated docs file exists
     if (fs.existsSync(docsPath)) {
       res.sendFile(docsPath);
