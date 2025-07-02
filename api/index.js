@@ -148,6 +148,10 @@ app.use('/api/pubchem', limiter);
 app.use('/api/pugview', limiter);
 app.use('/api/autocomplete', limiter);
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'docs.html'));
+});
+
 // 📊 NEW: Analytics endpoints
 app.get('/analytics', (req, res) => {
   res.json({
@@ -729,7 +733,7 @@ async function fetchFromPubChem(path) {
 }
 
 // Serve the integrated documentation page with live analytics
-app.get('/docs', (req, res) => {
+app.get('/api/docs', (req, res) => {
   try {
     const docsPath = path.join(__dirname, '..', 'public', 'docs.html');  
     // Check if the integrated docs file exists
@@ -765,7 +769,7 @@ app.get('/docs', (req, res) => {
                                     to enable the full interactive documentation with live analytics.
                                 </div>
                                 <div class="d-grid gap-2 d-md-block">
-                                    <a href="/api/docs" class="btn btn-primary">
+                                    <a href="/api/json/docs" class="btn btn-primary">
                                         <i class="fas fa-code me-2"></i>
                                         View JSON API Docs
                                     </a>
@@ -803,7 +807,7 @@ app.get('/docs', (req, res) => {
     res.status(500).json({
       error: 'Failed to serve documentation',
       message: 'Please ensure docs.html exists in the project root directory',
-      fallback: 'Visit /api/docs for JSON documentation'
+      fallback: 'Visit /api/json/docs for JSON documentation'
     });
   }
 });
@@ -1164,7 +1168,7 @@ function addEducationalContext(properties) {
 }
 
 // Enhanced API documentation (JSON)
-app.get('/api/docs', (req, res) => {
+app.get('/api/json/docs', (req, res) => {
   res.json({
     service: 'PubChem Educational Proxy API',
     version: '2.1.0',
@@ -1178,7 +1182,7 @@ app.get('/api/docs', (req, res) => {
       educational: 'GET /api/pubchem/compound/{id}/educational - Comprehensive educational data',
       pugview: 'GET /api/pugview/compound/{cid}/{section} - Educational annotations',
       autocomplete: 'GET /api/autocomplete/{query} - Chemical name suggestions',
-      api_docs: 'GET /api/docs - This JSON documentation'
+      api_docs: 'GET /api/json/docs - This JSON documentation'
     },
     examples: {
       search_by_name: '/api/pubchem/compound/name/aspirin/cids/JSON',
@@ -1209,7 +1213,7 @@ app.use('*', (req, res) => {
   res.status(404).json({
     error: 'Not found',
     message: `Route ${req.originalUrl} not found`,
-    availableRoutes: ['/health', '/dashboard', '/analytics', '/api/docs', '/api/pubchem/*']
+    availableRoutes: ['/health', '/dashboard', 'api/docs', '/analytics', '/api/json/docs', '/api/pubchem/*']
   });
 });
 
@@ -1221,7 +1225,7 @@ app.use('*', (req, res) => {
 // 🏥 Health check: http://localhost:${port}/health
 // 📊 Live Dashboard: http://localhost:${port}/dashboard
 // 📈 Analytics API: http://localhost:${port}/analytics
-// 📚 API docs: http://localhost:${port}/api/docs
+// 📚 JSON API docs: http://localhost:${port}/api/json/docs
 
 // 🎓 Educational Features:
 //    • Comprehensive molecular properties with explanations
