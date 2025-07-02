@@ -36,19 +36,12 @@ app.use(cors({
 
 app.use(express.json());
 
+
 // ⚡ CRITICAL: Serve static files FIRST
-app.use('/static', express.static(path.join(__dirname, 'static'), {
-  maxAge: '1d',
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.ico')) {
-      res.setHeader('Content-Type', 'image/x-icon');
-    } else if (filePath.endsWith('.png')) {
-      res.setHeader('Content-Type', 'image/png');
-    } else if (filePath.endsWith('.webmanifest')) {
-      res.setHeader('Content-Type', 'application/manifest+json');
-    }
-  }
-}));
+app.use(express.static(path.join(__dirname, '..', 'static')));
+
+
+
 
 // 📊 NEW: Analytics middleware - Track all API requests
 app.use('/api', (req, res, next) => {
