@@ -739,8 +739,7 @@ async function fetchFromPubChem(path) {
 // Serve the integrated documentation page with live analytics
 app.get('/docs', (req, res) => {
   try {
-    const docsPath = path.join(__dirname, 'docs.html');
-    
+    const docsPath = path.join(__dirname, '..', 'static', 'docs.html');  
     // Check if the integrated docs file exists
     if (fs.existsSync(docsPath)) {
       res.sendFile(docsPath);
