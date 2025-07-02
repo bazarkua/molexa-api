@@ -34,11 +34,11 @@
   "author": "Adilbek Bazarkulov",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "node-fetch": "^2.7.0",
+    "express": "^4.18.2",
     "express-rate-limit": "^6.10.0",
-    "node-cache": "^5.1.2"
+    "node-cache": "^5.1.2",
+    "node-fetch": "^2.7.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
@@ -74,11 +74,11 @@
   },
   "api_endpoints": {
     "health": "/health",
-    "docs_interactive": "/docs", 
+    "docs_interactive": "/docs",
     "docs_json": "/api/docs",
     "educational_overview": "/api/pubchem/compound/{id}/educational",
     "safety_annotations": "/api/pugview/compound/{cid}/safety",
-    "pharmacology_data": "/api/pugview/compound/{cid}/pharmacology", 
+    "pharmacology_data": "/api/pugview/compound/{cid}/pharmacology",
     "chemical_properties": "/api/pugview/compound/{cid}/properties",
     "autocomplete": "/api/autocomplete/{query}",
     "headings": "/api/pugview/headings/{topic}",
