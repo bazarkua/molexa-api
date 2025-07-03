@@ -369,6 +369,8 @@ app.get('/api/json/docs', (req, res) => {
 
 // Enhanced compound data endpoint with educational properties
 // 🔧 FIXED: Updated to use fastformula instead of deprecated formula endpoint
+// Enhanced compound data endpoint with educational properties
+// 🔧 FIXED: Updated to properly handle fastformula endpoint
 app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
   try {
     const { identifier } = req.params;
@@ -390,13 +392,10 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
       const encodedIdentifier = encodeURIComponent(identifier.toLowerCase().trim());
       console.log(`🔍 Searching for CID using ${identifierType}: ${encodedIdentifier}`);
       
-      // 🔧 FIX: Map 'fastformula' back to 'formula' for PubChem API consistency
-      // The frontend sends 'fastformula', but we need to use the right endpoint
+      // 🔧 FIX: Use the identifierType directly - fastformula is already the correct endpoint
+      // No need to map it back to 'formula' since fastformula is what we want
       let pubchemSearchType = identifierType;
-      if (identifierType === 'fastformula') {
-        pubchemSearchType = 'fastformula'; // Use the correct fastformula endpoint
-        console.log(`🔄 Using fastformula endpoint for formula search`);
-      }
+      console.log(`🌐 Using PubChem endpoint: compound/${pubchemSearchType}/${encodedIdentifier}/cids/JSON`);
       
       const cidResponse = await fetchFromPubChem(`compound/${pubchemSearchType}/${encodedIdentifier}/cids/JSON`);
       if (cidResponse.IdentifierList && cidResponse.IdentifierList.CID) {
@@ -409,7 +408,7 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
           suggestions: [
             'Check the spelling of the compound name',
             'Try alternative names (e.g., "acetylsalicylic acid" for aspirin)',
-            'Use a different identifier type (name, formula, smiles)',
+            'Use a different identifier type (name, fastformula, smiles)',
             'For formulas, ensure proper capitalization (e.g., C2H6O not c2h6o)',
             'Search on PubChem website first to verify the compound exists'
           ]
@@ -448,7 +447,8 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
         original_identifier: identifier,
         identifier_type: identifierType,
         found_via: identifierType !== 'cid' ? `${identifierType} search` : 'direct CID',
-        search_successful: true
+        search_successful: true,
+        pubchem_endpoint_used: identifierType !== 'cid' ? `compound/${identifierType}/${encodedIdentifier}/cids/JSON` : 'direct CID'
       },
       basic_properties: basicData.PropertyTable?.Properties?.[0] || {},
       synonyms: synonymsData.InformationList?.Information?.[0]?.Synonym?.slice(0, 10) || [],
@@ -505,6 +505,7 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
         suggestions: [
           'Check spelling and try alternative names',
           'Use chemical identifiers like SMILES or InChI',
+          'For formulas, try the fastformula search endpoint',
           'Search PubChem website to verify compound exists'
         ]
       });
