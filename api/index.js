@@ -45,6 +45,7 @@ app.use(cors({
   origin: [
     'https://molexa.org',
     'https://molexa.vercel.app',   // Vercel preview/live
+    'https://molexa-api.vercel.app',
     'https://www.molexa.org',
     'http://localhost:3000', 
     'http://localhost:5173', 
@@ -272,7 +273,7 @@ app.get('/api/health', (req, res) => {
     service: 'moleXa Educational Proxy API',
     version: '2.1.0',
     timestamp: new Date().toISOString(),
-    base_url: 'https://molexa.org',
+    base_url: 'https://molexa-api.vercel.app',
     cache_stats: cache.getStats(),
     analytics: {
       ...analyticsStatus,
@@ -328,9 +329,9 @@ app.get('/api/json/docs', (req, res) => {
     service: 'moleXa Educational Proxy API',
     version: '2.1.0',
     description: 'Enhanced proxy server for educational molecular data access with selective analytics',
-    base_url: 'https://molexa.org/api',
+    base_url: 'https://molexa-api.vercel.app/api',
     homepage: 'https://molexa.org',
-    documentation: 'https://molexa.org/api/docs',
+    documentation: 'https://molexa-api.vercel.app/api/docs',
     endpoints: {
       health: 'GET /api/health - Service health check with analytics',
       docs: 'GET /api/docs - Interactive documentation',
@@ -990,7 +991,7 @@ function generateMainDocsPage() {
                         </div>
                         <small class="d-block">Base URL:</small>
                         <code style="background: rgba(255,255,255,0.2); padding: 0.5rem; border-radius: 0.25rem;">
-                            https://molexa.org/api
+                            https://molexa-api.vercel.app/api
                         </code>
                         <small class="d-block mt-2 text-light">Smart analytics - Only API usage tracked</small>
                     </div>
@@ -1017,7 +1018,7 @@ function generateMainDocsPage() {
                         <div class="card-body">
                             <div class="code-example">
 // Fetch comprehensive educational data for aspirin
-const response = await fetch('https://molexa.org/api/pubchem/compound/aspirin/educational?type=name');
+const response = await fetch('https://molexa-api.vercel.app/api/pubchem/compound/aspirin/educational?type=name');
 const data = await response.json();
 
 console.log('Formula:', data.basic_properties.MolecularFormula);
@@ -1037,7 +1038,7 @@ console.log('Educational Context:', data.educational_context);
                         <div class="card-body">
                             <div class="code-example">
 // Get autocomplete suggestions for chemical names
-const response = await fetch('https://molexa.org/api/autocomplete/caffe?limit=5');
+const response = await fetch('https://molexa-api.vercel.app/api/api/autocomplete/caffe?limit=5');
 const suggestions = await response.json();
 
 console.log('Suggestions:', suggestions.suggestions);

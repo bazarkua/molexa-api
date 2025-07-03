@@ -1,7 +1,7 @@
 {
   "name": "molexa-backend",
   "version": "2.1.0",
-  "description": "Enhanced backend proxy server for PubChem API access with educational features - production deployment for molexa.org/api",
+  "description": "Enhanced backend proxy server for PubChem API access with educational features - production deployment for https://molexa-api.vercel.app/api",
   "main": "api/index.js",
   "scripts": {
     "start": "node api/index.js",
