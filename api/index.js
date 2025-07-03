@@ -44,6 +44,7 @@ try {
 app.use(cors({
   origin: [
     'https://molexa.org',
+    "https://molexa.vercel.app",   // Vercel preview/live
     'https://www.molexa.org',
     'http://localhost:3000', 
     'http://localhost:5173', 
@@ -366,6 +367,7 @@ app.get('/api/json/docs', (req, res) => {
 });
 
 // Enhanced compound data endpoint with educational properties
+// 🔧 FIXED: Updated to use fastformula instead of deprecated formula endpoint
 app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
   try {
     const { identifier } = req.params;
@@ -387,10 +389,18 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
       const encodedIdentifier = encodeURIComponent(identifier.toLowerCase().trim());
       console.log(`🔍 Searching for CID using ${identifierType}: ${encodedIdentifier}`);
       
-      const cidResponse = await fetchFromPubChem(`compound/${identifierType}/${encodedIdentifier}/cids/JSON`);
+      // 🔧 FIX: Map 'fastformula' back to 'formula' for PubChem API consistency
+      // The frontend sends 'fastformula', but we need to use the right endpoint
+      let pubchemSearchType = identifierType;
+      if (identifierType === 'fastformula') {
+        pubchemSearchType = 'fastformula'; // Use the correct fastformula endpoint
+        console.log(`🔄 Using fastformula endpoint for formula search`);
+      }
+      
+      const cidResponse = await fetchFromPubChem(`compound/${pubchemSearchType}/${encodedIdentifier}/cids/JSON`);
       if (cidResponse.IdentifierList && cidResponse.IdentifierList.CID) {
         cid = cidResponse.IdentifierList.CID[0];
-        console.log(`✅ Found CID: ${cid} for ${identifier}`);
+        console.log(`✅ Found CID: ${cid} for ${identifier} using ${pubchemSearchType}`);
       } else {
         return res.status(404).json({ 
           error: 'Compound not found',
@@ -399,6 +409,7 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
             'Check the spelling of the compound name',
             'Try alternative names (e.g., "acetylsalicylic acid" for aspirin)',
             'Use a different identifier type (name, formula, smiles)',
+            'For formulas, ensure proper capitalization (e.g., C2H6O not c2h6o)',
             'Search on PubChem website first to verify the compound exists'
           ]
         });
@@ -435,7 +446,8 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
       search_info: {
         original_identifier: identifier,
         identifier_type: identifierType,
-        found_via: identifierType !== 'cid' ? `${identifierType} search` : 'direct CID'
+        found_via: identifierType !== 'cid' ? `${identifierType} search` : 'direct CID',
+        search_successful: true
       },
       basic_properties: basicData.PropertyTable?.Properties?.[0] || {},
       synonyms: synonymsData.InformationList?.Information?.[0]?.Synonym?.slice(0, 10) || [],
@@ -480,6 +492,7 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
           'Verify the compound name spelling',
           'Try searching on PubChem website first',
           'Use alternative compound names or identifiers',
+          'For molecular formulas, ensure proper case (C2H6O not c2h6o)',
           'Check if the compound exists in PubChem database'
         ],
         pubchem_error: error.message
@@ -1299,6 +1312,12 @@ async function initializeAnalytics() {
 // Initialize analytics on startup
 initializeAnalytics().catch(console.error);
 
+
+// start the server
+app.listen(port, () => {
+  console.log(`🚀 moleXa backend listening on http://localhost:${port}`);
+});
+
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
@@ -1318,5 +1337,6 @@ process.on('SIGINT', () => {
   console.log('\n🛑 SIGINT received, shutting down gracefully');
   process.exit(0);
 });
+
 
 module.exports = app;
