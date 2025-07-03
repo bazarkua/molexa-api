@@ -100,6 +100,7 @@ app.use('/api/autocomplete', limiter);
 // });
 
 // 📊 UPDATED: Analytics endpoints with database support
+
 app.get('/api/analytics', async (req, res) => {
   try {
     const summary = analyticsDB.getAnalyticsSummary();
@@ -114,6 +115,8 @@ app.get('/api/analytics', async (req, res) => {
     res.json({
       ...summary,
       recentRequests: mappedRecentRequests,
+      // Make sure requestsByType is included from the database
+      requestsByType: summary.requestsByType || analyticsDB.cache?.requestsByType || {},
       database_connected: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
       tracking_mode: analyticsDB.shouldTrackRequest ? 'selective' : 'disabled'
     });
