@@ -1108,7 +1108,18 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
                 }
                 
                 const data = await response.json();
+                console.log('📊 Initial analytics data:', data);
+                
                 updateAnalytics(data);
+                
+                // Handle initial recent requests if present
+                if (data.recentRequests) {
+                    updateRecentRequests(data.recentRequests);
+                } else {
+                    // Still try to calculate counts with any existing data
+                    updateRequestTypeCounts();
+                }
+                
                 updateConnectionStatus(true);
                 
                 // Start SSE connection
@@ -1144,11 +1155,17 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
                 eventSource.onmessage = function(event) {
                     try {
                         const data = JSON.parse(event.data);
+                        console.log('📡 Received analytics update:', data.type, data);
                         
                         if (data.type === 'initial' || data.type === 'update') {
-                            updateAnalytics(data.analytics);
+                            if (data.analytics) {
+                                updateAnalytics(data.analytics);
+                            }
                             if (data.recentRequests) {
                                 updateRecentRequests(data.recentRequests);
+                            } else {
+                                // If no recent requests in this update, still recalculate counts with existing data
+                                updateRequestTypeCounts();
                             }
                         }
                     } catch (error) {
@@ -1236,8 +1253,8 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
             document.getElementById('totalRequests').textContent = analyticsData.totalRequests;
             document.getElementById('heroTotalRequests').textContent = analyticsData.totalRequests;
             
-            // Calculate specific request type counts from recent requests
-            updateRequestTypeCounts();
+            // Don't calculate request type counts here - wait for recent requests data
+            // updateRequestTypeCounts(); // REMOVED - will be called in updateRecentRequests
             
             // Update request types breakdown
             updateRequestTypesDisplay();
@@ -1245,23 +1262,38 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
         
         function updateRequestTypeCounts() {
             const recentRequests = analyticsData.recentRequests || [];
+            console.log(`📊 Calculating counts from ${recentRequests.length} recent requests`, recentRequests.slice(0, 3));
             
-            const searchCount = recentRequests.filter(r => 
-                (r.type && (r.type.toLowerCase().includes('autocomplete') || 
-                           r.type.toLowerCase().includes('search') ||
-                           r.type.toLowerCase().includes('name search'))) ||
-                (r.endpoint && r.endpoint.includes('autocomplete'))
-            ).length;
+            const searchCount = recentRequests.filter(r => {
+                const type = (r.type || '').toLowerCase();
+                const endpoint = (r.endpoint || '').toLowerCase();
+                return type.includes('autocomplete') || 
+                       type.includes('search') ||
+                       type.includes('name search') ||
+                       endpoint.includes('autocomplete') ||
+                       endpoint.includes('/compound/name/') ||
+                       endpoint.includes('/compound/fastformula/');
+            }).length;
             
-            const educationalCount = recentRequests.filter(r => 
-                (r.type && r.type.toLowerCase().includes('educational')) ||
-                (r.endpoint && r.endpoint.includes('educational'))
-            ).length;
+            const educationalCount = recentRequests.filter(r => {
+                const type = (r.type || '').toLowerCase();
+                const endpoint = (r.endpoint || '').toLowerCase();
+                return type.includes('educational') ||
+                       endpoint.includes('educational') ||
+                       endpoint.includes('/pugview/');
+            }).length;
             
-            const imageCount = recentRequests.filter(r => 
-                (r.type && r.type.toLowerCase().includes('image')) ||
-                (r.endpoint && r.endpoint.includes('.PNG'))
-            ).length;
+            const imageCount = recentRequests.filter(r => {
+                const type = (r.type || '').toLowerCase();
+                const endpoint = (r.endpoint || '').toLowerCase();
+                return type.includes('image') ||
+                       type.includes('structure') ||
+                       endpoint.includes('.png') ||
+                       endpoint.includes('.jpg') ||
+                       endpoint.includes('.svg');
+            }).length;
+            
+            console.log(`📊 Counts: Search=${searchCount}, Educational=${educationalCount}, Images=${imageCount}`);
             
             document.getElementById('searchRequests').textContent = searchCount;
             document.getElementById('educationalRequests').textContent = educationalCount;
@@ -1286,6 +1318,7 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
         }
         
         function updateRecentRequests(requests) {
+            console.log(`📝 Updating recent requests:`, requests?.length || 0, requests?.slice(0, 2));
             analyticsData.recentRequests = requests || [];
             const feed = document.getElementById('activityFeed');
             
@@ -1297,6 +1330,8 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
                         <small>Only actual API usage is tracked (PubChem requests, autocomplete, etc.)</small>
                     </div>
                 `;
+                // Still update counts even with empty data
+                updateRequestTypeCounts();
                 return;
             }
             
@@ -1304,6 +1339,7 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
                 createRequestElement(request).outerHTML
             ).join('');
             
+            // Always update counts after setting recent requests
             updateRequestTypeCounts();
         }
         
