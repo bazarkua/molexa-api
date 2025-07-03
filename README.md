@@ -54,8 +54,8 @@ If you find this project useful, please consider giving it a star on GitHub.
 | Purpose                           | Endpoint                                       |
 | --------------------------------- | ---------------------------------------------- |
 | Health check                      | `GET /health`                                  |
-| Interactive docs                  | `GET /docs`                                    |
-| JSON API documentation            | `GET /api/docs`                                |
+| Interactive docs                  | `GET /api/docs`                                |
+| JSON API documentation            | `GET /api/json/docs`                           |
 | Educational overview              | `GET /api/pubchem/compound/{id}/educational`   |
 | Safety annotations                | `GET /api/pugview/compound/{cid}/safety`       |
 | Pharmacology data                 | `GET /api/pugview/compound/{cid}/pharmacology` |
