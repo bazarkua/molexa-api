@@ -146,31 +146,15 @@ app.use('/api/autocomplete', limiter);
 
 // ===== API ROUTES (JSON ONLY) =====
 
-// Root API info endpoint
-app.get('/api', (req, res) => {
-  res.json({
-    service: 'moleXa Educational Proxy API',
-    version: '2.1.0',
-    description: 'Enhanced proxy server for educational molecular data access',
-    documentation: {
-      homepage: 'https://molexa.org/',
-      interactive: 'https://molexa.org/#endpoints',
-      json: '/api/docs'
-    },
-    base_url: 'https://molexa.org/api',
-    status: 'online',
-    uptime_minutes: Math.floor((new Date() - analytics.startTime) / (1000 * 60))
-  });
-});
-
-// API Documentation (JSON only - HTML is served statically)
-app.get('/api/docs', (req, res) => {
+// JSON API Documentation (the only docs route handled by API)
+app.get('/api/json/docs', (req, res) => {
   res.json({
     service: 'moleXa Educational Proxy API',
     version: '2.1.0',
     description: 'Enhanced proxy server for educational molecular data access',
     base_url: 'https://molexa.org/api',
-    documentation_url: 'https://molexa.org/',
+    documentation_url: 'https://molexa.org/api/docs',
+    homepage: 'https://molexa.org/',
     endpoints: {
       health: 'GET /api/health - Service health check',
       analytics: 'GET /api/analytics - Analytics data',
@@ -178,14 +162,30 @@ app.get('/api/docs', (req, res) => {
       pubchem: 'GET /api/pubchem/* - PubChem proxy',
       educational: 'GET /api/pubchem/compound/{id}/educational',
       safety: 'GET /api/pugview/compound/{cid}/safety',
-      autocomplete: 'GET /api/autocomplete/{query}'
+      autocomplete: 'GET /api/autocomplete/{query}',
+      json_docs: 'GET /api/json/docs - This endpoint (JSON documentation)'
     },
     examples: {
       educational: '/api/pubchem/compound/caffeine/educational?type=name',
       safety: '/api/pugview/compound/2244/safety?heading=Toxicity',
       autocomplete: '/api/autocomplete/caffe?limit=5',
-      properties: '/api/pubchem/compound/cid/2244/property/MolecularFormula,MolecularWeight/JSON'
-    }
+      properties: '/api/pubchem/compound/cid/2244/property/MolecularFormula,MolecularWeight/JSON',
+      search_by_name: '/api/pubchem/compound/name/aspirin/cids/JSON',
+      structure_image: '/api/pubchem/compound/cid/2244/PNG'
+    },
+    rate_limits: {
+      pubchem: '5 requests per second',
+      other: 'No specific limit'
+    },
+    features: [
+      'PUG-REST API proxy with educational context',
+      'PUG-View API for safety and educational annotations',
+      'Autocomplete suggestions for chemical names',
+      'Enhanced educational endpoints with explanations',
+      'Live analytics and usage tracking',
+      'CORS enabled for cross-origin requests',
+      'Response caching for improved performance'
+    ]
   });
 });
 
@@ -198,6 +198,10 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     base_url: 'https://molexa.org/api',
     frontend_url: 'https://molexa.org/',
+    documentation: {
+      interactive: 'https://molexa.org/api/docs',
+      json: 'https://molexa.org/api/json/docs'
+    },
     analytics: getAnalyticsSummary(),
     features: [
       'PUG-REST API (computed properties)',
@@ -238,11 +242,6 @@ app.get('/api/analytics/stream', (req, res) => {
   req.on('close', () => {
     sseConnections.delete(res);
   });
-});
-
-// Dashboard redirect (since HTML is served statically)
-app.get('/api/dashboard', (req, res) => {
-  res.redirect('/#analytics');
 });
 
 // Educational endpoint
@@ -483,13 +482,18 @@ app.use('*', (req, res) => {
     message: `Route ${req.originalUrl} not found`,
     available_endpoints: {
       health: '/api/health',
-      docs: '/api/docs',
+      docs_json: '/api/json/docs',
       analytics: '/api/analytics',
+      analytics_stream: '/api/analytics/stream',
       educational: '/api/pubchem/compound/{id}/educational',
       autocomplete: '/api/autocomplete/{query}',
-      pubchem_proxy: '/api/pubchem/*'
+      pubchem_proxy: '/api/pubchem/*',
+      pugview: '/api/pugview/compound/{cid}/{section}'
     },
-    frontend_url: 'https://molexa.org/'
+    documentation: {
+      interactive: 'https://molexa.org/api/docs',
+      homepage: 'https://molexa.org/'
+    }
   });
 });
 
