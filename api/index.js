@@ -109,11 +109,11 @@ function categorizeRequest(url) {
 }
 
 function getEndpointCategory(url) {
-  if (url.includes('/pubchem')) return 'PubChem API';
-  if (url.includes('/pugview')) return 'Educational Content';
-  if (url.includes('/autocomplete')) return 'Search Suggestions';
-  if (url.includes('/docs')) return 'Documentation';
-  if (url.includes('/health')) return 'Health Check';
+  if (url.includes('/api/pubchem')) return 'PubChem API';
+  if (url.includes('/api/pugview')) return 'Educational Content';
+  if (url.includes('/api/autocomplete')) return 'Search Suggestions';
+  if (url.includes('/api/docs')) return 'Documentation';
+  if (url.includes('/api/health')) return 'Health Check';
   return 'Other';
 }
 
@@ -172,7 +172,7 @@ app.get('/', (req, res) => {
 });
 
 // 📊 Analytics endpoints
-app.get('/analytics', (req, res) => {
+app.get('/api/analytics', (req, res) => {
   res.json({
     ...getAnalyticsSummary(),
     recentRequests: analytics.recentRequests.slice(0, 20),
@@ -183,7 +183,7 @@ app.get('/analytics', (req, res) => {
 });
 
 // 📊 Server-Sent Events for real-time updates
-app.get('/analytics/stream', (req, res) => {
+app.get('/api/analytics/stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -216,12 +216,12 @@ app.get('/analytics/stream', (req, res) => {
 });
 
 // 📊 Analytics Dashboard HTML page
-app.get('/dashboard', (req, res) => {
+app.get('/api/dashboard', (req, res) => {
   res.send(generateDashboardPage());
 });
 
 // Health check endpoint (enhanced with analytics)
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
     service: 'moleXa Educational Proxy API',
