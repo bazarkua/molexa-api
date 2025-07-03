@@ -371,6 +371,7 @@ app.get('/api/json/docs', (req, res) => {
 // 🔧 FIXED: Updated to use fastformula instead of deprecated formula endpoint
 // Enhanced compound data endpoint with educational properties
 // 🔧 FIXED: Updated to properly handle fastformula endpoint
+// Fixed educational endpoint - resolves encodedIdentifier scope issue
 app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
   try {
     const { identifier } = req.params;
@@ -388,12 +389,13 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
     console.log(`🎓 Fetching educational data for: ${identifier} (type: ${identifierType})`);
     
     let cid = identifier;
+    let encodedIdentifier = identifier; // 🔧 FIX: Declare outside the if block
+    
     if (identifierType !== 'cid') {
-      const encodedIdentifier = encodeURIComponent(identifier.toLowerCase().trim());
+      encodedIdentifier = encodeURIComponent(identifier.toLowerCase().trim());
       console.log(`🔍 Searching for CID using ${identifierType}: ${encodedIdentifier}`);
       
-      // 🔧 FIX: Use the identifierType directly - fastformula is already the correct endpoint
-      // No need to map it back to 'formula' since fastformula is what we want
+      // Use the identifierType directly - fastformula is already the correct endpoint
       let pubchemSearchType = identifierType;
       console.log(`🌐 Using PubChem endpoint: compound/${pubchemSearchType}/${encodedIdentifier}/cids/JSON`);
       
