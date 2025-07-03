@@ -125,9 +125,15 @@ app.get('/api/analytics', async (req, res) => {
     const summary = analyticsDB.getAnalyticsSummary();
     const recentRequests = analyticsDB.getRecentRequests(20);
     
+    // Map field names for frontend compatibility
+    const mappedRecentRequests = recentRequests.map(req => ({
+      ...req,
+      type: req.request_type || req.type || 'API Request' // Ensure 'type' field exists
+    }));
+    
     res.json({
       ...summary,
-      recentRequests: recentRequests,
+      recentRequests: mappedRecentRequests,
       database_connected: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
       tracking_mode: analyticsDB.shouldTrackRequest ? 'selective' : 'disabled'
     });
@@ -210,26 +216,36 @@ app.get('/api/analytics/stream', (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  // Send initial data
+    // Send initial data (mapped for frontend)
   const summary = analyticsDB.getAnalyticsSummary();
   const recentRequests = analyticsDB.getRecentRequests(10);
+  const mappedRecentRequests = recentRequests.map(r => ({
+    ...r,
+    type: r.request_type || r.type || 'API Request'
+  }));
   
   res.write(`data: ${JSON.stringify({
     type: 'initial',
     analytics: summary,
-    recentRequests: recentRequests
+    recentRequests: mappedRecentRequests
   })}\n\n`);
+
+  
 
   // Send updates every 30 seconds
   const interval = setInterval(() => {
     try {
       const currentSummary = analyticsDB.getAnalyticsSummary();
       const currentRequests = analyticsDB.getRecentRequests(5);
+      const mappedCurrentRequests = currentRequests.map(r => ({
+        ...r,
+        type: r.request_type || r.type || 'API Request'
+      }));
       
       res.write(`data: ${JSON.stringify({
         type: 'update',
         analytics: currentSummary,
-        recentRequests: currentRequests
+        recentRequests: mappedCurrentRequests
       })}\n\n`);
     } catch (error) {
       clearInterval(interval);

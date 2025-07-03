@@ -174,11 +174,15 @@ class AnalyticsDB {
     };
 
     // Update cache immediately
-    this.cache.totalRequests++;
-    this.cache.recentRequests.unshift(requestData);
-    if (this.cache.recentRequests.length > 50) {
-      this.cache.recentRequests = this.cache.recentRequests.slice(0, 50);
-    }
+      this.cache.totalRequests++;
+        const cacheEntry = {
+            ...requestData,
+            type: requestData.request_type
+        };
+        this.cache.recentRequests.unshift(cacheEntry);
+        if (this.cache.recentRequests.length > 50) {
+            this.cache.recentRequests = this.cache.recentRequests.slice(0, 50);
+        }
 
     // Update counters
     this.cache.requestsByType[requestData.request_type] = 
