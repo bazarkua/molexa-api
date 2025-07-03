@@ -1252,38 +1252,25 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
         }
         
         function updateAnalytics(analytics) {
-            const previousTotal = analyticsData.totalRequests;
             analyticsData.totalRequests = analytics.totalRequests || 0;
             analyticsData.requestsByType = analytics.topTypes ? Object.fromEntries(analytics.topTypes) : {};
-            
-            // 🔧 FIX: Update cumulative counters from the backend data directly
-            if (analytics.topTypes) {
-                const typeMap = Object.fromEntries(analytics.topTypes);
-                
-                analyticsData.cumulativeCounts.search = 
-                    (typeMap['Autocomplete'] || 0) + 
-                    (typeMap['Name Search'] || 0) + 
-                    (typeMap['Formula Search'] || 0);
-                    
-                analyticsData.cumulativeCounts.educational = 
-                    (typeMap['Educational Overview'] || 0) + 
-                    (typeMap['Educational Annotations'] || 0);
-                    
-                analyticsData.cumulativeCounts.images = 
-                    (typeMap['Structure Image'] || 0) + 
-                    (typeMap['Structure File'] || 0);
-            }
             
             // Update main stats
             document.getElementById('totalRequests').textContent = analyticsData.totalRequests;
             document.getElementById('heroTotalRequests').textContent = analyticsData.totalRequests;
             
-            // Update the specific counters with cumulative data
-            document.getElementById('searchRequests').textContent = analyticsData.cumulativeCounts.search;
-            document.getElementById('educationalRequests').textContent = analyticsData.cumulativeCounts.educational;
-            document.getElementById('imageRequests').textContent = analyticsData.cumulativeCounts.images;
-            
-            console.log(`📊 Updated analytics: Total=${analyticsData.totalRequests}, Search=${analyticsData.cumulativeCounts.search}, Educational=${analyticsData.cumulativeCounts.educational}, Images=${analyticsData.cumulativeCounts.images}`);
+            // 🔧 FIX: Use backend's cumulative counts directly - NO MORE CALCULATION
+            if (analytics.cumulativeCounts) {
+                document.getElementById('searchRequests').textContent = analytics.cumulativeCounts.search || 0;
+                document.getElementById('educationalRequests').textContent = analytics.cumulativeCounts.educational || 0;
+                document.getElementById('imageRequests').textContent = analytics.cumulativeCounts.images || 0;
+                
+                console.log(`📊 Using backend cumulative counts:`, analytics.cumulativeCounts);
+            } else {
+                // Fallback to old method if cumulative counts not available
+                console.log(`⚠️ No cumulative counts from backend, using fallback calculation`);
+                updateRequestTypeCounts();
+            }
             
             // Update request types breakdown
             updateRequestTypesDisplay();
@@ -1380,7 +1367,7 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
             ).join('');
             
             // Always update counts after setting recent requests
-            updateRequestTypeCounts();
+            //updateRequestTypeCounts();
         }
         
         function showConnectionError() {

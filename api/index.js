@@ -195,49 +195,56 @@ app.post('/api/analytics/archive/:monthYear', async (req, res) => {
 
 // 📊 Enhanced fallback analytics for development
 // 📊 Enhanced fallback analytics for development - FIXED VERSION
+// ===== BACKEND FIX (index.js) =====
+
+// 📊 Enhanced fallback analytics with PROPER CUMULATIVE COUNTING
 const createEnhancedFallbackAnalytics = () => {
   const storage = {
     totalRequests: 0,
     recentRequests: [],
     requestsByType: {},
     requestsByEndpoint: {},
-    startTime: new Date()
+    startTime: new Date(),
+    // 🔧 NEW: Track cumulative counts properly
+    cumulativeCounts: {
+      search: 0,
+      educational: 0,
+      images: 0
+    }
   };
 
   const shouldTrackRequest = (url, method) => {
-    const trackablePatterns = [
-      '/api/pubchem/',
-      '/api/pugview/',
-      '/api/autocomplete/'
-    ];
-    const excludePatterns = [
-      '/api/docs',
-      '/api/analytics',
-      '/api/health',
-      '/api/dashboard',
-      '/api/json/docs'
-    ];
+    const trackablePatterns = ['/api/pubchem/', '/api/pugview/', '/api/autocomplete/'];
+    const excludePatterns = ['/api/docs', '/api/analytics', '/api/health', '/api/dashboard', '/api/json/docs'];
     
-    if (excludePatterns.some(pattern => url.includes(pattern))) {
-      return false;
-    }
+    if (excludePatterns.some(pattern => url.includes(pattern))) return false;
     return trackablePatterns.some(pattern => url.includes(pattern));
   };
 
   const categorizeRequest = (url) => {
+    console.log(`🔍 Categorizing URL: ${url}`); // Debug log
+    
     if (url.includes('/educational')) return 'Educational Overview';
+    if (url.includes('/autocomplete')) return 'Autocomplete';
+    if (url.includes('/compound/name/')) return 'Name Search';
+    if (url.includes('/compound/fastformula/')) return 'Formula Search';
+    if (url.includes('/pugview')) return 'Educational Annotations';
+    
+    // 🔧 ENHANCED: Better Structure Image detection
+    if (url.includes('.PNG') || url.includes('.png') || 
+        url.includes('PNG?') || url.includes('png?') ||
+        url.includes('/PNG/') || url.includes('/png/')) {
+      console.log(`🖼️ Detected Structure Image: ${url}`);
+      return 'Structure Image';
+    }
+    
+    if (url.includes('.SDF') || url.includes('.sdf')) return 'Structure File';
     if (url.includes('/safety')) return 'Safety Data';
     if (url.includes('/pharmacology')) return 'Pharmacology';
     if (url.includes('/properties')) return 'Properties';
-    if (url.includes('/autocomplete')) return 'Autocomplete';
-    if (url.includes('/pugview')) return 'Educational Annotations';
-    if (url.includes('/compound/name/')) return 'Name Search';
     if (url.includes('/compound/cid/')) return 'CID Lookup';
-    if (url.includes('/compound/fastformula/')) return 'Formula Search';
     if (url.includes('/compound/smiles/')) return 'SMILES Search';
-    // 🔧 FIX: Check for both .PNG and .png
-    if (url.includes('.PNG') || url.includes('.png')) return 'Structure Image';
-    if (url.includes('.SDF') || url.includes('.sdf')) return 'Structure File';
+    
     return 'Other API';
   };
 
@@ -246,31 +253,40 @@ const createEnhancedFallbackAnalytics = () => {
     categorizeRequest,
     
     trackRequest: async (req, res, responseTime) => {
-      // 🔧 FIX: Use the local function directly, not module.exports
-      if (!shouldTrackRequest(req.originalUrl, req.method)) {
-        return;
-      }
+      if (!shouldTrackRequest(req.originalUrl, req.method)) return;
 
+      const requestType = categorizeRequest(req.originalUrl);
       const requestData = {
         id: Date.now() + Math.random(),
         timestamp: new Date().toISOString(),
         method: req.method,
         endpoint: req.originalUrl,
-        request_type: categorizeRequest(req.originalUrl), // 🔧 FIX: Use local function
+        request_type: requestType,
         response_status: res.statusCode,
         response_time_ms: responseTime
       };
 
-      // Update storage - 🔧 FIX: Make sure we're updating the persistent storage
+      // Update storage
       storage.totalRequests++;
       storage.recentRequests.unshift(requestData);
       if (storage.recentRequests.length > 50) {
         storage.recentRequests = storage.recentRequests.slice(0, 50);
       }
 
-      // Update counters - 🔧 FIX: Make sure counters persist
-      storage.requestsByType[requestData.request_type] = 
-        (storage.requestsByType[requestData.request_type] || 0) + 1;
+      // Update type counters
+      storage.requestsByType[requestType] = (storage.requestsByType[requestType] || 0) + 1;
+
+      // 🔧 FIX: Update cumulative counts immediately
+      if (['Autocomplete', 'Name Search', 'Formula Search'].includes(requestType)) {
+        storage.cumulativeCounts.search++;
+      }
+      if (['Educational Overview', 'Educational Annotations'].includes(requestType)) {
+        storage.cumulativeCounts.educational++;
+      }
+      if (['Structure Image', 'Structure File'].includes(requestType)) {
+        storage.cumulativeCounts.images++;
+        console.log(`🖼️ Image request tracked! Total images: ${storage.cumulativeCounts.images}`);
+      }
 
       const endpointCategory = requestData.endpoint.includes('/pubchem') ? 'PubChem API' :
         requestData.endpoint.includes('/pugview') ? 'Educational Content' :
@@ -279,46 +295,39 @@ const createEnhancedFallbackAnalytics = () => {
       storage.requestsByEndpoint[endpointCategory] = 
         (storage.requestsByEndpoint[endpointCategory] || 0) + 1;
 
-      console.log(`📊 [DEV][${storage.totalRequests}] ${requestData.method} ${requestData.endpoint} - ${requestData.request_type} (${responseTime}ms)`);
-      console.log(`📊 Current counts: ${JSON.stringify(storage.requestsByType)}`);
+      console.log(`📊 [DEV][${storage.totalRequests}] ${requestData.method} ${requestData.endpoint} - ${requestType} (${responseTime}ms)`);
+      console.log(`📊 Cumulative: Search=${storage.cumulativeCounts.search}, Educational=${storage.cumulativeCounts.educational}, Images=${storage.cumulativeCounts.images}`);
     },
 
     getAnalyticsSummary: () => ({
       totalRequests: storage.totalRequests,
       recentRequestsCount: storage.recentRequests.length,
-      topEndpoints: Object.entries(storage.requestsByEndpoint)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 5),
-      topTypes: Object.entries(storage.requestsByType)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 5),
+      topEndpoints: Object.entries(storage.requestsByEndpoint).sort(([,a], [,b]) => b - a).slice(0, 5),
+      topTypes: Object.entries(storage.requestsByType).sort(([,a], [,b]) => b - a).slice(0, 5),
       uptimeMinutes: Math.floor((new Date() - storage.startTime) / (1000 * 60)),
       currentMonth: new Date().toISOString().slice(0, 7),
       isDevelopment: true,
-      databaseConnected: false
+      databaseConnected: false,
+      // 🔧 NEW: Include cumulative counts in summary
+      cumulativeCounts: { ...storage.cumulativeCounts }
     }),
 
     getRecentRequests: (limit = 20) => storage.recentRequests.slice(0, limit),
-    
-    // 🔧 NEW: Get internal storage for debugging
     getInternalStorage: () => storage
   };
 };
 
-// 📊 FIXED: Analytics endpoint with better logging
+// 📊 FIXED: Analytics endpoint that returns cumulative counts
 app.get('/api/analytics', async (req, res) => {
   try {
     const summary = analyticsDB.getAnalyticsSummary();
     const recentRequests = analyticsDB.getRecentRequests(20);
     
-    console.log(`📊 Analytics summary: ${summary.totalRequests} total, ${recentRequests.length} recent`);
-    console.log(`📊 Request types:`, summary.topTypes);
-    
-    // 🔧 FIX: Debug internal storage if available
-    if (analyticsDB.getInternalStorage) {
-      const storage = analyticsDB.getInternalStorage();
-      console.log(`📊 Internal storage types:`, storage.requestsByType);
-    }
+    console.log(`📊 Analytics summary:`, {
+      total: summary.totalRequests,
+      recent: recentRequests.length,
+      cumulative: summary.cumulativeCounts
+    });
     
     const mappedRecentRequests = recentRequests.map(req => ({
       ...req,
@@ -330,10 +339,9 @@ app.get('/api/analytics', async (req, res) => {
       recentRequests: mappedRecentRequests,
       database_connected: summary.databaseConnected || false,
       tracking_mode: 'selective',
-      server_mode: 'development'
+      server_mode: process.env.NODE_ENV || 'development'
     };
 
-    console.log(`📊 Sending analytics response with ${mappedRecentRequests.length} recent requests`);
     res.json(response);
   } catch (error) {
     console.error('❌ Analytics endpoint error:', error);
@@ -341,7 +349,7 @@ app.get('/api/analytics', async (req, res) => {
   }
 });
 
-// 📊 FIXED: Enhanced SSE stream that preserves data
+// 📊 FIXED: SSE stream with cumulative counts
 app.get('/api/analytics/stream', (req, res) => {
   console.log('📊 Analytics stream connected');
   
@@ -355,8 +363,7 @@ app.get('/api/analytics/stream', (req, res) => {
       const summary = analyticsDB.getAnalyticsSummary();
       const recentRequests = analyticsDB.getRecentRequests(10);
       
-      // 🔧 FIX: Debug what we're sending
-      console.log(`📊 SSE sending: ${summary.totalRequests} total, types:`, summary.topTypes);
+      console.log(`📊 SSE sending cumulative counts:`, summary.cumulativeCounts);
       
       const mappedRecentRequests = recentRequests.map(r => ({
         ...r,
@@ -365,22 +372,18 @@ app.get('/api/analytics/stream', (req, res) => {
       
       const data = {
         type: 'update',
-        analytics: summary,
+        analytics: summary, // This now includes cumulativeCounts
         recentRequests: mappedRecentRequests,
         timestamp: new Date().toISOString()
       };
       
       res.write(`data: ${JSON.stringify(data)}\n\n`);
-      console.log(`📊 Sent analytics update: ${summary.totalRequests} total requests`);
     } catch (error) {
       console.error('❌ SSE error:', error);
     }
   };
 
-  // Send initial data immediately
   sendUpdate();
-
-  // 🔧 FIX: Send updates every 30 seconds instead of 15 to reduce resets
   const interval = setInterval(sendUpdate, 30000);
 
   req.on('close', () => {
