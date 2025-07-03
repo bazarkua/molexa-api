@@ -446,61 +446,41 @@
                 </div>
             </div>
 
-             <!-- Stats Row -->
-            
             <!-- Stats Row -->
             <div class="row mb-4">
-                <div class="col-md-2 mb-3">
-                    <div class="card stat-card border-0 text-center h-100">
-                        <div class="card-body">
-                            <i class="fas fa-globe fa-2x mb-3"></i>
-                            <h3 class="mb-0" id="totalRequests">0</h3>
-                            <p class="mb-0 opacity-75">Total Requests</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-2 mb-3">
-                    <div class="card stat-card border-0 text-center h-100">
-                        <div class="card-body">
-                            <i class="fas fa-search fa-2x mb-3"></i>
-                            <h3 class="mb-0" id="cidLookupCount">0</h3>
-                            <p class="mb-0 opacity-75">CID Lookup</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-2 mb-3">
+                <div class="col-md-3 mb-3">
                     <div class="card stat-card border-0 text-center h-100">
                         <div class="card-body">
                             <i class="fas fa-flask fa-2x mb-3"></i>
-                            <h3 class="mb-0" id="nameSearchCount">0</h3>
-                            <p class="mb-0 opacity-75">Name Search</p>
+                            <h3 class="mb-0" id="totalRequests">0</h3>
+                            <p class="mb-0 opacity-75">Total API Requests</p>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-2 mb-3">
+                <div class="col-md-3 mb-3">
+                    <div class="card stat-card border-0 text-center h-100">
+                        <div class="card-body">
+                            <i class="fas fa-search fa-2x mb-3"></i>
+                            <h3 class="mb-0" id="searchRequests">0</h3>
+                            <p class="mb-0 opacity-75">Search & Autocomplete</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
                     <div class="card stat-card border-0 text-center h-100">
                         <div class="card-body">
                             <i class="fas fa-graduation-cap fa-2x mb-3"></i>
-                            <h3 class="mb-0" id="educationalOverviewCount">0</h3>
-                            <p class="mb-0 opacity-75">Educational Overview</p>
+                            <h3 class="mb-0" id="educationalRequests">0</h3>
+                            <p class="mb-0 opacity-75">Educational Data</p>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-2 mb-3">
+                <div class="col-md-3 mb-3">
                     <div class="card stat-card border-0 text-center h-100">
                         <div class="card-body">
-                            <i class="fas fa-shield-alt fa-2x mb-3"></i>
-                            <h3 class="mb-0" id="safetyDataCount">0</h3>
-                            <p class="mb-0 opacity-75">Safety Data</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-2 mb-3">
-                    <div class="card stat-card border-0 text-center h-100">
-                        <div class="card-body">
-                            <i class="fas fa-magic fa-2x mb-3"></i>
-                            <h3 class="mb-0" id="autocompleteCount">0</h3>
-                            <p class="mb-0 opacity-75">Autocomplete</p>
+                            <i class="fas fa-image fa-2x mb-3"></i>
+                            <h3 class="mb-0" id="imageRequests">0</h3>
+                            <p class="mb-0 opacity-75">Structure Images</p>
                         </div>
                     </div>
                 </div>
@@ -1097,18 +1077,12 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
     
     <!-- Enhanced Live Analytics JavaScript -->
     <script>
-        // Global analytics state with better persistence
+        // Global analytics state
         let analyticsData = {
             totalRequests: 0,
             recentRequests: [],
             requestsByType: {},
-            connected: false,
-            // 🔧 NEW: Cumulative counters that don't reset
-            cumulativeCounts: {
-                search: 0,
-                educational: 0,
-                images: 0
-            }
+            connected: false
         };
         
         let eventSource = null;
@@ -1134,18 +1108,7 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
                 }
                 
                 const data = await response.json();
-                console.log('📊 Initial analytics data:', data);
-                
                 updateAnalytics(data);
-                
-                // Handle initial recent requests if present
-                if (data.recentRequests) {
-                    updateRecentRequests(data.recentRequests);
-                } else {
-                    // Still try to calculate counts with any existing data
-                    updateRequestTypeCounts();
-                }
-                
                 updateConnectionStatus(true);
                 
                 // Start SSE connection
@@ -1181,17 +1144,11 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
                 eventSource.onmessage = function(event) {
                     try {
                         const data = JSON.parse(event.data);
-                        console.log('📡 Received analytics update:', data.type, data);
                         
                         if (data.type === 'initial' || data.type === 'update') {
-                            if (data.analytics) {
-                                updateAnalytics(data.analytics);
-                            }
+                            updateAnalytics(data.analytics);
                             if (data.recentRequests) {
                                 updateRecentRequests(data.recentRequests);
-                            } else {
-                                // If no recent requests in this update, still recalculate counts with existing data
-                                updateRequestTypeCounts();
                             }
                         }
                     } catch (error) {
@@ -1279,18 +1236,8 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
             document.getElementById('totalRequests').textContent = analyticsData.totalRequests;
             document.getElementById('heroTotalRequests').textContent = analyticsData.totalRequests;
             
-            // 🔧 FIX: Use backend's cumulative counts directly - NO MORE CALCULATION
-            if (analytics.cumulativeCounts) {
-                document.getElementById('searchRequests').textContent = analytics.cumulativeCounts.search || 0;
-                document.getElementById('educationalRequests').textContent = analytics.cumulativeCounts.educational || 0;
-                document.getElementById('imageRequests').textContent = analytics.cumulativeCounts.images || 0;
-                
-                console.log(`📊 Using backend cumulative counts:`, analytics.cumulativeCounts);
-            } else {
-                // Fallback to old method if cumulative counts not available
-                console.log(`⚠️ No cumulative counts from backend, using fallback calculation`);
-                updateRequestTypeCounts();
-            }
+            // Calculate specific request type counts from recent requests
+            updateRequestTypeCounts();
             
             // Update request types breakdown
             updateRequestTypesDisplay();
@@ -1298,53 +1245,27 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
         
         function updateRequestTypeCounts() {
             const recentRequests = analyticsData.recentRequests || [];
-            console.log(`📊 Calculating counts from ${recentRequests.length} recent requests`, recentRequests.slice(0, 3));
             
-            const searchCount = recentRequests.filter(r => {
-                const type = (r.type || '').toLowerCase();
-                const endpoint = (r.endpoint || '').toLowerCase();
-                return type.includes('autocomplete') || 
-                       type.includes('search') ||
-                       type.includes('name search') ||
-                       endpoint.includes('autocomplete') ||
-                       endpoint.includes('/compound/name/') ||
-                       endpoint.includes('/compound/fastformula/');
-            }).length;
+            const searchCount = recentRequests.filter(r => 
+                (r.type && (r.type.toLowerCase().includes('autocomplete') || 
+                           r.type.toLowerCase().includes('search') ||
+                           r.type.toLowerCase().includes('name search'))) ||
+                (r.endpoint && r.endpoint.includes('autocomplete'))
+            ).length;
             
-            const educationalCount = recentRequests.filter(r => {
-                const type = (r.type || '').toLowerCase();
-                const endpoint = (r.endpoint || '').toLowerCase();
-                return type.includes('educational') ||
-                       endpoint.includes('educational') ||
-                       endpoint.includes('/pugview/');
-            }).length;
+            const educationalCount = recentRequests.filter(r => 
+                (r.type && r.type.toLowerCase().includes('educational')) ||
+                (r.endpoint && r.endpoint.includes('educational'))
+            ).length;
             
-            const imageCount = recentRequests.filter(r => {
-                const type = (r.type || '').toLowerCase();
-                const endpoint = (r.endpoint || '').toLowerCase();
-                return type.includes('image') ||
-                       type.includes('structure') ||
-                       endpoint.includes('.png') ||
-                       endpoint.includes('.PNG') || // 🔧 FIX: Check both cases
-                       endpoint.includes('.jpg') ||
-                       endpoint.includes('.svg');
-            }).length;
+            const imageCount = recentRequests.filter(r => 
+                (r.type && r.type.toLowerCase().includes('image')) ||
+                (r.endpoint && r.endpoint.includes('.PNG'))
+            ).length;
             
-            console.log(`📊 Counts: Search=${searchCount}, Educational=${educationalCount}, Images=${imageCount}`);
-            
-            // 🔧 FIX: Only update if we have data, preserve existing counts if no recent data
-            if (recentRequests.length > 0) {
-                document.getElementById('searchRequests').textContent = searchCount;
-                document.getElementById('educationalRequests').textContent = educationalCount;
-                document.getElementById('imageRequests').textContent = imageCount;
-            } else {
-                // If no recent requests, try to maintain existing counts or set to 0
-                const currentSearch = parseInt(document.getElementById('searchRequests').textContent) || 0;
-                const currentEducational = parseInt(document.getElementById('educationalRequests').textContent) || 0;
-                const currentImages = parseInt(document.getElementById('imageRequests').textContent) || 0;
-                
-                console.log(`📊 No recent requests, maintaining: Search=${currentSearch}, Educational=${currentEducational}, Images=${currentImages}`);
-            }
+            document.getElementById('searchRequests').textContent = searchCount;
+            document.getElementById('educationalRequests').textContent = educationalCount;
+            document.getElementById('imageRequests').textContent = imageCount;
         }
         
         function updateRequestTypesDisplay() {
@@ -1365,7 +1286,6 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
         }
         
         function updateRecentRequests(requests) {
-            console.log(`📝 Updating recent requests:`, requests?.length || 0, requests?.slice(0, 2));
             analyticsData.recentRequests = requests || [];
             const feed = document.getElementById('activityFeed');
             
@@ -1377,8 +1297,6 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
                         <small>Only actual API usage is tracked (PubChem requests, autocomplete, etc.)</small>
                     </div>
                 `;
-                // Still update counts even with empty data
-                updateRequestTypeCounts();
                 return;
             }
             
@@ -1386,8 +1304,7 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
                 createRequestElement(request).outerHTML
             ).join('');
             
-            // Always update counts after setting recent requests
-            //updateRequestTypeCounts();
+            updateRequestTypeCounts();
         }
         
         function showConnectionError() {

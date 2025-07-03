@@ -16,7 +16,29 @@ const port = process.env.PORT || 3001;
 const cache = new NodeCache({ stdTTL: 86400 });
 const autocompleteCache = new NodeCache({ stdTTL: 3600 });
 
-
+// 📊 NEW: Initialize Analytics Database System
+let analyticsDB;
+try {
+  // Try to load the analytics database system
+  analyticsDB = require('./analytics-db');
+  console.log('📊 Analytics database system loaded');
+} catch (error) {
+  console.log('📊 Analytics database not configured, using memory-only analytics');
+  // Fallback to simple memory-based analytics
+  analyticsDB = {
+    shouldTrackRequest: () => false, // Don't track anything without DB
+    trackRequest: async () => {},
+    getAnalyticsSummary: () => ({
+      totalRequests: 0,
+      recentRequestsCount: 0,
+      topEndpoints: [],
+      topTypes: [],
+      uptimeMinutes: 0,
+      currentMonth: new Date().toISOString().slice(0, 7)
+    }),
+    getRecentRequests: () => []
+  };
+}
 
 // Enable CORS for all routes
 app.use(cors({
@@ -100,7 +122,6 @@ app.use('/api/autocomplete', limiter);
 // });
 
 // 📊 UPDATED: Analytics endpoints with database support
-
 app.get('/api/analytics', async (req, res) => {
   try {
     const summary = analyticsDB.getAnalyticsSummary();
@@ -115,8 +136,6 @@ app.get('/api/analytics', async (req, res) => {
     res.json({
       ...summary,
       recentRequests: mappedRecentRequests,
-      // Make sure requestsByType is included from the database
-      requestsByType: summary.requestsByType || analyticsDB.cache?.requestsByType || {},
       database_connected: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
       tracking_mode: analyticsDB.shouldTrackRequest ? 'selective' : 'disabled'
     });
@@ -193,221 +212,52 @@ app.post('/api/analytics/archive/:monthYear', async (req, res) => {
 });
 
 // 📊 UPDATED: Server-Sent Events for real-time updates
-// Quick fix for analytics-db.js - enhance the existing fallback analytics
-// Replace the existing fallback in your index.js with this enhanced version:
-
-// 📊 Enhanced fallback analytics for development
-// 📊 Enhanced fallback analytics for development - FIXED VERSION
-// ===== BACKEND FIX (index.js) =====
-
-// 📊 Enhanced fallback analytics with PROPER CUMULATIVE COUNTING
-const createEnhancedFallbackAnalytics = () => {
-  const storage = {
-    totalRequests: 0,
-    recentRequests: [],
-    requestsByType: {},
-    requestsByEndpoint: {},
-    startTime: new Date(),
-    // 🔧 NEW: Track cumulative counts properly
-    cumulativeCounts: {
-      search: 0,
-      educational: 0,
-      images: 0
-    }
-  };
-
-  const shouldTrackRequest = (url, method) => {
-    const trackablePatterns = ['/api/pubchem/', '/api/pugview/', '/api/autocomplete/'];
-    const excludePatterns = ['/api/docs', '/api/analytics', '/api/health', '/api/dashboard', '/api/json/docs'];
-    
-    if (excludePatterns.some(pattern => url.includes(pattern))) return false;
-    return trackablePatterns.some(pattern => url.includes(pattern));
-  };
-
-  const categorizeRequest = (url) => {
-    console.log(`🔍 Categorizing URL: ${url}`); // Debug log
-    
-    if (url.includes('/educational')) return 'Educational Overview';
-    if (url.includes('/autocomplete')) return 'Autocomplete';
-    if (url.includes('/compound/name/')) return 'Name Search';
-    if (url.includes('/compound/fastformula/')) return 'Formula Search';
-    if (url.includes('/pugview')) return 'Educational Annotations';
-    
-    // 🔧 ENHANCED: Better Structure Image detection
-    if (url.includes('.PNG') || url.includes('.png') || 
-        url.includes('PNG?') || url.includes('png?') ||
-        url.includes('/PNG/') || url.includes('/png/')) {
-      console.log(`🖼️ Detected Structure Image: ${url}`);
-      return 'Structure Image';
-    }
-    
-    if (url.includes('.SDF') || url.includes('.sdf')) return 'Structure File';
-    if (url.includes('/safety')) return 'Safety Data';
-    if (url.includes('/pharmacology')) return 'Pharmacology';
-    if (url.includes('/properties')) return 'Properties';
-    if (url.includes('/compound/cid/')) return 'CID Lookup';
-    if (url.includes('/compound/smiles/')) return 'SMILES Search';
-    
-    return 'Other API';
-  };
-
-  return {
-    shouldTrackRequest,
-    categorizeRequest,
-    
-    trackRequest: async (req, res, responseTime) => {
-      if (!shouldTrackRequest(req.originalUrl, req.method)) return;
-
-      const requestType = categorizeRequest(req.originalUrl);
-      const requestData = {
-        id: Date.now() + Math.random(),
-        timestamp: new Date().toISOString(),
-        method: req.method,
-        endpoint: req.originalUrl,
-        request_type: requestType,
-        response_status: res.statusCode,
-        response_time_ms: responseTime
-      };
-
-      // Update storage
-      storage.totalRequests++;
-      storage.recentRequests.unshift(requestData);
-      if (storage.recentRequests.length > 50) {
-        storage.recentRequests = storage.recentRequests.slice(0, 50);
-      }
-
-      // Update type counters
-      storage.requestsByType[requestType] = (storage.requestsByType[requestType] || 0) + 1;
-
-      // 🔧 FIX: Update cumulative counts immediately
-      if (['Autocomplete', 'Name Search', 'Formula Search'].includes(requestType)) {
-        storage.cumulativeCounts.search++;
-      }
-      if (['Educational Overview', 'Educational Annotations'].includes(requestType)) {
-        storage.cumulativeCounts.educational++;
-      }
-      if (['Structure Image', 'Structure File'].includes(requestType)) {
-        storage.cumulativeCounts.images++;
-        console.log(`🖼️ Image request tracked! Total images: ${storage.cumulativeCounts.images}`);
-      }
-
-      const endpointCategory = requestData.endpoint.includes('/pubchem') ? 'PubChem API' :
-        requestData.endpoint.includes('/pugview') ? 'Educational Content' :
-        requestData.endpoint.includes('/autocomplete') ? 'Search Suggestions' : 'Other';
-      
-      storage.requestsByEndpoint[endpointCategory] = 
-        (storage.requestsByEndpoint[endpointCategory] || 0) + 1;
-
-      console.log(`📊 [DEV][${storage.totalRequests}] ${requestData.method} ${requestData.endpoint} - ${requestType} (${responseTime}ms)`);
-      console.log(`📊 Cumulative: Search=${storage.cumulativeCounts.search}, Educational=${storage.cumulativeCounts.educational}, Images=${storage.cumulativeCounts.images}`);
-    },
-
-    getAnalyticsSummary: () => ({
-      totalRequests: storage.totalRequests,
-      recentRequestsCount: storage.recentRequests.length,
-      topEndpoints: Object.entries(storage.requestsByEndpoint).sort(([,a], [,b]) => b - a).slice(0, 5),
-      topTypes: Object.entries(storage.requestsByType).sort(([,a], [,b]) => b - a).slice(0, 5),
-      uptimeMinutes: Math.floor((new Date() - storage.startTime) / (1000 * 60)),
-      currentMonth: new Date().toISOString().slice(0, 7),
-      isDevelopment: true,
-      databaseConnected: false,
-      // 🔧 NEW: Include cumulative counts in summary
-      cumulativeCounts: { ...storage.cumulativeCounts }
-    }),
-
-    getRecentRequests: (limit = 20) => storage.recentRequests.slice(0, limit),
-    getInternalStorage: () => storage
-  };
-};
-
-// 📊 FIXED: Analytics endpoint that returns cumulative counts
-app.get('/api/analytics', async (req, res) => {
-  try {
-    const summary = analyticsDB.getAnalyticsSummary();
-    const recentRequests = analyticsDB.getRecentRequests(20);
-    
-    console.log(`📊 Analytics summary:`, {
-      total: summary.totalRequests,
-      recent: recentRequests.length,
-      cumulative: summary.cumulativeCounts
-    });
-    
-    const mappedRecentRequests = recentRequests.map(req => ({
-      ...req,
-      type: req.request_type || req.type || 'API Request'
-    }));
-    
-    const response = {
-      ...summary,
-      recentRequests: mappedRecentRequests,
-      database_connected: summary.databaseConnected || false,
-      tracking_mode: 'selective',
-      server_mode: process.env.NODE_ENV || 'development'
-    };
-
-    res.json(response);
-  } catch (error) {
-    console.error('❌ Analytics endpoint error:', error);
-    res.status(500).json({ error: 'Failed to fetch analytics' });
-  }
-});
-
-// 📊 FIXED: SSE stream with cumulative counts
 app.get('/api/analytics/stream', (req, res) => {
-  console.log('📊 Analytics stream connected');
-  
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  const sendUpdate = () => {
+    // Send initial data (mapped for frontend)
+  const summary = analyticsDB.getAnalyticsSummary();
+  const recentRequests = analyticsDB.getRecentRequests(10);
+  const mappedRecentRequests = recentRequests.map(r => ({
+    ...r,
+    type: r.request_type || r.type || 'API Request'
+  }));
+  
+  res.write(`data: ${JSON.stringify({
+    type: 'initial',
+    analytics: summary,
+    recentRequests: mappedRecentRequests
+  })}\n\n`);
+
+  
+
+  // Send updates every 30 seconds
+  const interval = setInterval(() => {
     try {
-      const summary = analyticsDB.getAnalyticsSummary();
-      const recentRequests = analyticsDB.getRecentRequests(10);
-      
-      console.log(`📊 SSE sending cumulative counts:`, summary.cumulativeCounts);
-      
-      const mappedRecentRequests = recentRequests.map(r => ({
+      const currentSummary = analyticsDB.getAnalyticsSummary();
+      const currentRequests = analyticsDB.getRecentRequests(5);
+      const mappedCurrentRequests = currentRequests.map(r => ({
         ...r,
         type: r.request_type || r.type || 'API Request'
       }));
       
-      const data = {
+      res.write(`data: ${JSON.stringify({
         type: 'update',
-        analytics: summary, // This now includes cumulativeCounts
-        recentRequests: mappedRecentRequests,
-        timestamp: new Date().toISOString()
-      };
-      
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
+        analytics: currentSummary,
+        recentRequests: mappedCurrentRequests
+      })}\n\n`);
     } catch (error) {
-      console.error('❌ SSE error:', error);
+      clearInterval(interval);
     }
-  };
-
-  sendUpdate();
-  const interval = setInterval(sendUpdate, 30000);
+  }, 30000);
 
   req.on('close', () => {
     clearInterval(interval);
-    console.log('📊 Analytics stream disconnected');
   });
 });
-
-// 🔧 Replace your analytics initialization section with this:
-let analyticsDB;
-try {
-  analyticsDB = require('./analytics-db');
-  console.log('📊 Analytics database system loaded');
-} catch (error) {
-  console.log('📊 Using enhanced development analytics (no database required)');
-  analyticsDB = createEnhancedFallbackAnalytics();
-}
-
-// Test the analytics by making a request:
-// You can test this by visiting: http://localhost:3001/api/pubchem/compound/name/aspirin/cids/JSON
-// Then check: http://localhost:3001/api/analytics
 
 // Analytics Dashboard HTML page
 app.get('/api/dashboard', (req, res) => {
