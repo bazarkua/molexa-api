@@ -16,29 +16,7 @@ const port = process.env.PORT || 3001;
 const cache = new NodeCache({ stdTTL: 86400 });
 const autocompleteCache = new NodeCache({ stdTTL: 3600 });
 
-// 📊 NEW: Initialize Analytics Database System
-let analyticsDB;
-try {
-  // Try to load the analytics database system
-  analyticsDB = require('./analytics-db');
-  console.log('📊 Analytics database system loaded');
-} catch (error) {
-  console.log('📊 Analytics database not configured, using memory-only analytics');
-  // Fallback to simple memory-based analytics
-  analyticsDB = {
-    shouldTrackRequest: () => false, // Don't track anything without DB
-    trackRequest: async () => {},
-    getAnalyticsSummary: () => ({
-      totalRequests: 0,
-      recentRequestsCount: 0,
-      topEndpoints: [],
-      topTypes: [],
-      uptimeMinutes: 0,
-      currentMonth: new Date().toISOString().slice(0, 7)
-    }),
-    getRecentRequests: () => []
-  };
-}
+
 
 // Enable CORS for all routes
 app.use(cors({
@@ -212,52 +190,218 @@ app.post('/api/analytics/archive/:monthYear', async (req, res) => {
 });
 
 // 📊 UPDATED: Server-Sent Events for real-time updates
+// Quick fix for analytics-db.js - enhance the existing fallback analytics
+// Replace the existing fallback in your index.js with this enhanced version:
+
+// 📊 Enhanced fallback analytics for development
+// 📊 Enhanced fallback analytics for development - FIXED VERSION
+const createEnhancedFallbackAnalytics = () => {
+  const storage = {
+    totalRequests: 0,
+    recentRequests: [],
+    requestsByType: {},
+    requestsByEndpoint: {},
+    startTime: new Date()
+  };
+
+  const shouldTrackRequest = (url, method) => {
+    const trackablePatterns = [
+      '/api/pubchem/',
+      '/api/pugview/',
+      '/api/autocomplete/'
+    ];
+    const excludePatterns = [
+      '/api/docs',
+      '/api/analytics',
+      '/api/health',
+      '/api/dashboard',
+      '/api/json/docs'
+    ];
+    
+    if (excludePatterns.some(pattern => url.includes(pattern))) {
+      return false;
+    }
+    return trackablePatterns.some(pattern => url.includes(pattern));
+  };
+
+  const categorizeRequest = (url) => {
+    if (url.includes('/educational')) return 'Educational Overview';
+    if (url.includes('/safety')) return 'Safety Data';
+    if (url.includes('/pharmacology')) return 'Pharmacology';
+    if (url.includes('/properties')) return 'Properties';
+    if (url.includes('/autocomplete')) return 'Autocomplete';
+    if (url.includes('/pugview')) return 'Educational Annotations';
+    if (url.includes('/compound/name/')) return 'Name Search';
+    if (url.includes('/compound/cid/')) return 'CID Lookup';
+    if (url.includes('/compound/fastformula/')) return 'Formula Search';
+    if (url.includes('/compound/smiles/')) return 'SMILES Search';
+    // 🔧 FIX: Check for both .PNG and .png
+    if (url.includes('.PNG') || url.includes('.png')) return 'Structure Image';
+    if (url.includes('.SDF') || url.includes('.sdf')) return 'Structure File';
+    return 'Other API';
+  };
+
+  return {
+    shouldTrackRequest,
+    categorizeRequest,
+    
+    trackRequest: async (req, res, responseTime) => {
+      // 🔧 FIX: Use the local function directly, not module.exports
+      if (!shouldTrackRequest(req.originalUrl, req.method)) {
+        return;
+      }
+
+      const requestData = {
+        id: Date.now() + Math.random(),
+        timestamp: new Date().toISOString(),
+        method: req.method,
+        endpoint: req.originalUrl,
+        request_type: categorizeRequest(req.originalUrl), // 🔧 FIX: Use local function
+        response_status: res.statusCode,
+        response_time_ms: responseTime
+      };
+
+      // Update storage - 🔧 FIX: Make sure we're updating the persistent storage
+      storage.totalRequests++;
+      storage.recentRequests.unshift(requestData);
+      if (storage.recentRequests.length > 50) {
+        storage.recentRequests = storage.recentRequests.slice(0, 50);
+      }
+
+      // Update counters - 🔧 FIX: Make sure counters persist
+      storage.requestsByType[requestData.request_type] = 
+        (storage.requestsByType[requestData.request_type] || 0) + 1;
+
+      const endpointCategory = requestData.endpoint.includes('/pubchem') ? 'PubChem API' :
+        requestData.endpoint.includes('/pugview') ? 'Educational Content' :
+        requestData.endpoint.includes('/autocomplete') ? 'Search Suggestions' : 'Other';
+      
+      storage.requestsByEndpoint[endpointCategory] = 
+        (storage.requestsByEndpoint[endpointCategory] || 0) + 1;
+
+      console.log(`📊 [DEV][${storage.totalRequests}] ${requestData.method} ${requestData.endpoint} - ${requestData.request_type} (${responseTime}ms)`);
+      console.log(`📊 Current counts: ${JSON.stringify(storage.requestsByType)}`);
+    },
+
+    getAnalyticsSummary: () => ({
+      totalRequests: storage.totalRequests,
+      recentRequestsCount: storage.recentRequests.length,
+      topEndpoints: Object.entries(storage.requestsByEndpoint)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5),
+      topTypes: Object.entries(storage.requestsByType)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5),
+      uptimeMinutes: Math.floor((new Date() - storage.startTime) / (1000 * 60)),
+      currentMonth: new Date().toISOString().slice(0, 7),
+      isDevelopment: true,
+      databaseConnected: false
+    }),
+
+    getRecentRequests: (limit = 20) => storage.recentRequests.slice(0, limit),
+    
+    // 🔧 NEW: Get internal storage for debugging
+    getInternalStorage: () => storage
+  };
+};
+
+// 📊 FIXED: Analytics endpoint with better logging
+app.get('/api/analytics', async (req, res) => {
+  try {
+    const summary = analyticsDB.getAnalyticsSummary();
+    const recentRequests = analyticsDB.getRecentRequests(20);
+    
+    console.log(`📊 Analytics summary: ${summary.totalRequests} total, ${recentRequests.length} recent`);
+    console.log(`📊 Request types:`, summary.topTypes);
+    
+    // 🔧 FIX: Debug internal storage if available
+    if (analyticsDB.getInternalStorage) {
+      const storage = analyticsDB.getInternalStorage();
+      console.log(`📊 Internal storage types:`, storage.requestsByType);
+    }
+    
+    const mappedRecentRequests = recentRequests.map(req => ({
+      ...req,
+      type: req.request_type || req.type || 'API Request'
+    }));
+    
+    const response = {
+      ...summary,
+      recentRequests: mappedRecentRequests,
+      database_connected: summary.databaseConnected || false,
+      tracking_mode: 'selective',
+      server_mode: 'development'
+    };
+
+    console.log(`📊 Sending analytics response with ${mappedRecentRequests.length} recent requests`);
+    res.json(response);
+  } catch (error) {
+    console.error('❌ Analytics endpoint error:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+// 📊 FIXED: Enhanced SSE stream that preserves data
 app.get('/api/analytics/stream', (req, res) => {
+  console.log('📊 Analytics stream connected');
+  
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-    // Send initial data (mapped for frontend)
-  const summary = analyticsDB.getAnalyticsSummary();
-  const recentRequests = analyticsDB.getRecentRequests(10);
-  const mappedRecentRequests = recentRequests.map(r => ({
-    ...r,
-    type: r.request_type || r.type || 'API Request'
-  }));
-  
-  res.write(`data: ${JSON.stringify({
-    type: 'initial',
-    analytics: summary,
-    recentRequests: mappedRecentRequests
-  })}\n\n`);
-
-  
-
-  // Send updates every 30 seconds
-  const interval = setInterval(() => {
+  const sendUpdate = () => {
     try {
-      const currentSummary = analyticsDB.getAnalyticsSummary();
-      const currentRequests = analyticsDB.getRecentRequests(5);
-      const mappedCurrentRequests = currentRequests.map(r => ({
+      const summary = analyticsDB.getAnalyticsSummary();
+      const recentRequests = analyticsDB.getRecentRequests(10);
+      
+      // 🔧 FIX: Debug what we're sending
+      console.log(`📊 SSE sending: ${summary.totalRequests} total, types:`, summary.topTypes);
+      
+      const mappedRecentRequests = recentRequests.map(r => ({
         ...r,
         type: r.request_type || r.type || 'API Request'
       }));
       
-      res.write(`data: ${JSON.stringify({
+      const data = {
         type: 'update',
-        analytics: currentSummary,
-        recentRequests: mappedCurrentRequests
-      })}\n\n`);
+        analytics: summary,
+        recentRequests: mappedRecentRequests,
+        timestamp: new Date().toISOString()
+      };
+      
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+      console.log(`📊 Sent analytics update: ${summary.totalRequests} total requests`);
     } catch (error) {
-      clearInterval(interval);
+      console.error('❌ SSE error:', error);
     }
-  }, 30000);
+  };
+
+  // Send initial data immediately
+  sendUpdate();
+
+  // 🔧 FIX: Send updates every 30 seconds instead of 15 to reduce resets
+  const interval = setInterval(sendUpdate, 30000);
 
   req.on('close', () => {
     clearInterval(interval);
+    console.log('📊 Analytics stream disconnected');
   });
 });
+
+// 🔧 Replace your analytics initialization section with this:
+let analyticsDB;
+try {
+  analyticsDB = require('./analytics-db');
+  console.log('📊 Analytics database system loaded');
+} catch (error) {
+  console.log('📊 Using enhanced development analytics (no database required)');
+  analyticsDB = createEnhancedFallbackAnalytics();
+}
+
+// Test the analytics by making a request:
+// You can test this by visiting: http://localhost:3001/api/pubchem/compound/name/aspirin/cids/JSON
+// Then check: http://localhost:3001/api/analytics
 
 // Analytics Dashboard HTML page
 app.get('/api/dashboard', (req, res) => {
