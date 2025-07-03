@@ -27,7 +27,7 @@
   "theme_color": "#007bff",
   "background_color": "#ffffff",
   "display": "standalone",
-  "start_url": "/docs",
+  "start_url": "/api/docs",
   "scope": "/",
   "orientation": "portrait-primary",
   "categories": ["education", "science", "developer", "productivity"],
