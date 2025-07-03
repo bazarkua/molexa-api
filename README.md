@@ -3,89 +3,144 @@
 
 # moleXa-backend
 
-An educational backend proxy server for PubChem API access with enhanced molecular data and features.
+An educational Node.js proxy server for PubChem APIs, designed to enrich molecular data access, provide enhanced features, and support learning through interactive documentation and real-time analytics.
+
+---
+
+## Table of Contents
+
+1. [Features](#features)
+2. [Tech Stack](#tech-stack)
+3. [Getting Started](#getting-started)
+
+   * [Prerequisites](#prerequisites)
+   * [Installation](#installation)
+   * [Usage](#usage)
+   * [Running Tests](#running-tests)
+4. [API Endpoints](#api-endpoints)
+5. [Contributing](#contributing)
+6. [Citations](#citations)
+7. [License](#license)
+
+---
+
+## Features
+
+* **PubChem Proxy**: Overcomes CORS limitations by forwarding requests to PubChem PUG-REST and PUG-View.
+* **Educational Annotations**: Retrieves and annotates molecular properties, safety data, pharmacology, and more.
+* **Autocomplete**: Suggests chemical names for an enhanced search experience.
+* **Structure Visualization**: Supports 2D and 3D molecular representations.
+* **Live Analytics**: Optional real-time dashboard tracks API usage and performance.
+* **Rate Limiting & Caching**: Protects the API and improves response times.
+
+---
 
 ## Tech Stack
 
-- **Node.js** ≥ 14.0.0
-- **Express** v4.18.2
-- **CORS** v2.8.5
-- **node-fetch** v2.7.0
-- **express-rate-limit** v6.10.0
-- **node-cache** v5.1.2
-- **nodemon** v3.0.1 (development)
+* **Node.js** ≥ 14.0.0
+* **Express** v4.18.2
+* **CORS** v2.8.5
+* **node-fetch** v2.7.0
+* **express-rate-limit** v6.10.0
+* **node-cache** v5.1.2
+* **supabase-js** (for optional DB analytics)
+* **nodemon** v3.0.1 (development)
 
-## Installation and Usage
+---
+
+## Getting Started
+
+### Prerequisites
+
+* [Node.js](https://nodejs.org/) ≥ 14.x
+* [npm](https://www.npmjs.com/) or [Yarn](https://yarnpkg.com/)
+
+### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/bazarkua/molexa-api.git
    cd molexa-api
    ```
+
 2. **Install dependencies**
+
    ```bash
    npm install
-   ```
-3. **Run in production mode**
-   ```bash
-   npm start
-   ```
-4. **Run in development mode**
-   ```bash
-   npm run dev
-   ```
-5. **Run tests**
-   ```bash
-   npm test
+   # or yarn install
    ```
 
-If you find this project useful, please consider giving it a star on GitHub.
+### Usage
 
-## Features
+* **Production Mode**
 
-- **PubChem Proxy**: Addresses CORS issues and forwards requests to PubChem PUG-REST and PUG-View APIs.
-- **Educational Data**: Retrieves and annotates molecular properties, safety, pharmacology, and more.
-- **Autocomplete**: Provides chemical name suggestions for improved search experience.
-- **Live Analytics**: (Optional) Tracks API usage and offers a real-time dashboard.
-- **Structure Visualization**: Supports 2D/3D molecular representations.
+  ```bash
+  npm start
+  ```
+
+* **Development Mode**
+
+  ```bash
+  npm run dev
+  ```
+
+### Running Tests
+
+```bash
+npm test
+# or yarn test
+```
+
+---
 
 ## API Endpoints
 
-| Purpose                           | Endpoint                                       |
-| --------------------------------- | ---------------------------------------------- |
-| Health check                      | `GET /health`                                  |
-| Interactive docs                  | `GET /api/docs`                                |
-| JSON API documentation            | `GET /api/json/docs`                           |
-| Educational overview              | `GET /api/pubchem/compound/{id}/educational`   |
-| Safety annotations                | `GET /api/pugview/compound/{cid}/safety`       |
-| Pharmacology data                 | `GET /api/pugview/compound/{cid}/pharmacology` |
-| Chemical properties               | `GET /api/pugview/compound/{cid}/properties`   |
-| Autocomplete                      | `GET /api/autocomplete/{query}`                |
-| Educational headings              | `GET /api/pugview/headings/{topic}`            |
-| PubChem proxy (any PUG-REST path) | `GET /api/pubchem/*`                           |
+| Purpose                         | Endpoint                                   | Method |
+| ------------------------------- | ------------------------------------------ | ------ |
+| Health check                    | `/health`                                  | GET    |
+| API docs (interactive Swagger)  | `/api/docs`                                | GET    |
+| JSON API spec                   | `/api/json/docs`                           | GET    |
+| Educational overview            | `/api/pubchem/compound/{cid}/educational`  | GET    |
+| Safety annotations              | `/api/pugview/compound/{cid}/safety`       | GET    |
+| Pharmacology data               | `/api/pugview/compound/{cid}/pharmacology` | GET    |
+| Chemical properties             | `/api/pugview/compound/{cid}/properties`   | GET    |
+| Autocomplete (name suggestions) | `/api/autocomplete/{query}`                | GET    |
+| Headings by topic               | `/api/pugview/headings/{topic}`            | GET    |
+| PubChem proxy (any PUG-REST)    | `/api/pubchem/*`                           | GET    |
+| Analytics summary               | `/api/analytics`                           | GET    |
+| Analytics SSE stream            | `/api/analytics/stream`                    | GET    |
+
+---
 
 ## Contributing
 
-This is an educational project developed by Adilbek Bazarkulov with assistance from Claude AI. Contributions are welcome; feel free to open a pull request with improvements.
+Contributions and improvements are welcome! To contribute:
 
-## Credits and Citations
+1. Fork the repository.
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Commit your changes: `git commit -m 'Add some feature'`
+4. Push to the branch: `git push origin feature/my-feature`
+5. Open a Pull Request.
 
-#### \*\* How to Cite This API\*\*
+Be sure to follow the existing code style and include tests for new functionality.
 
-When using this educational proxy API in research, publications, or educational materials, please cite both this software and the underlying PubChem database:
+---
 
-##### **This API Software:**
+## Citations
 
-**APA Format:**\
-Bazarkulov, A. (2025). *moleXa API: PubChem Educational Proxy API* (Version 2.0.0) [Computer software]. GitHub. [**https://github.com/bazarkua/molexa-api**](https://github.com/bazarkua/molexa-api)
+When using this API in research or educational materials, please cite both the software and the underlying PubChem database:
 
-##### **PubChem Database:**
+**This API Software**
 
-**Primary Citation:**\
-Kim, S., Chen, J., Cheng, T., Gindulyte, A., He, J., He, S., Li, Q., Shoemaker, B. A., Thiessen, P. A., Yu, B., Zaslavsky, L., Zhang, J., & Bolton, E. E. (2023). PubChem 2023 update. *Nucleic Acids Research*, 51(D1), D1373–D1380. [**https://doi.org/10.1093/nar/gkac956**](https://doi.org/10.1093/nar/gkac956)
+**APA:** Bazarkulov, A. (2025). *moleXa API: PubChem Educational Proxy* (v2.0.0) \[Computer software]. GitHub. [https://github.com/bazarkua/molexa-api](https://github.com/bazarkua/molexa-api)
 
+**PubChem Database**
+
+Kim, S., Chen, J., Cheng, T., Gindulyte, A., He, J., Li, Q., et al. (2023). PubChem 2023 update. *Nucleic Acids Research*, 51(D1), D1373–D1380. [https://doi.org/10.1093/nar/gkac956](https://doi.org/10.1093/nar/gkac956)
+
+---
 
 ## License
 
-This project is licensed under the MIT License.
-
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
