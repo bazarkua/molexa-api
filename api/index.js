@@ -1,5 +1,5 @@
 // Enhanced PubChem Backend Proxy Server for Educational Applications
-// Restored to original working setup with molexa.org domain updates
+// Updated with selective analytics tracking and database storage
 
 const express = require('express');
 const cors = require('cors');
@@ -16,17 +16,29 @@ const port = process.env.PORT || 3001;
 const cache = new NodeCache({ stdTTL: 86400 });
 const autocompleteCache = new NodeCache({ stdTTL: 3600 });
 
-// 📊 Analytics tracking
-const analytics = {
-  totalRequests: 0,
-  recentRequests: [], // Keep last 100 requests
-  requestsByEndpoint: {},
-  requestsByHour: {},
-  startTime: new Date()
-};
-
-// Store SSE connections for real-time updates
-const sseConnections = new Set();
+// 📊 NEW: Initialize Analytics Database System
+let analyticsDB;
+try {
+  // Try to load the analytics database system
+  analyticsDB = require('./analytics-db');
+  console.log('📊 Analytics database system loaded');
+} catch (error) {
+  console.log('📊 Analytics database not configured, using memory-only analytics');
+  // Fallback to simple memory-based analytics
+  analyticsDB = {
+    shouldTrackRequest: () => false, // Don't track anything without DB
+    trackRequest: async () => {},
+    getAnalyticsSummary: () => ({
+      totalRequests: 0,
+      recentRequestsCount: 0,
+      topEndpoints: [],
+      topTypes: [],
+      uptimeMinutes: 0,
+      currentMonth: new Date().toISOString().slice(0, 7)
+    }),
+    getRecentRequests: () => []
+  };
+}
 
 // Enable CORS for all routes
 app.use(cors({
@@ -43,102 +55,38 @@ app.use(cors({
 
 app.use(express.json());
 
-// Also make sure you have proper static file serving:
+// Static file serving
 app.use('/public', express.static(path.join(__dirname, '..', 'public')));
 app.use('/static', express.static(path.join(__dirname, '..', 'public')));
-
-// ✅ This should be BEFORE your route handlers
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// 📊 Analytics middleware - Track all API requests
-app.use('/api', (req, res, next) => {
-  const requestData = {
-    id: Date.now() + Math.random().toString(36).substr(2, 9),
-    timestamp: new Date().toISOString(),
-    method: req.method,
-    endpoint: req.originalUrl,
-    ip: req.ip || req.connection.remoteAddress,
-    userAgent: req.get('User-Agent'),
-    type: categorizeRequest(req.originalUrl)
-  };
-
-  // Update analytics
-  analytics.totalRequests++;
-  analytics.recentRequests.unshift(requestData);
-  
-  // Keep only last 100 requests
-  if (analytics.recentRequests.length > 100) {
-    analytics.recentRequests = analytics.recentRequests.slice(0, 100);
+// 📊 NEW: Selective Analytics Middleware - Only tracks actual API usage
+const analyticsMiddleware = (req, res, next) => {
+  // Only proceed if this is a trackable request
+  if (!analyticsDB.shouldTrackRequest(req.originalUrl, req.method)) {
+    return next();
   }
 
-  // Track by endpoint
-  const endpointCategory = getEndpointCategory(req.originalUrl);
-  analytics.requestsByEndpoint[endpointCategory] = (analytics.requestsByEndpoint[endpointCategory] || 0) + 1;
+  const startTime = Date.now();
 
-  // Track by hour
-  const hour = new Date().getHours();
-  analytics.requestsByHour[hour] = (analytics.requestsByHour[hour] || 0) + 1;
-
-  console.log(`📊 [${analytics.totalRequests}] ${req.method} ${req.originalUrl} - ${requestData.type}`);
-
-  // Broadcast to SSE connections
-  broadcastToSSE({
-    type: 'new_request',
-    data: requestData,
-    analytics: getAnalyticsSummary()
-  });
+  // Track the request when response finishes
+  const originalSend = res.send;
+  res.send = function(data) {
+    const responseTime = Date.now() - startTime;
+    
+    // Track the request (async, don't block response)
+    analyticsDB.trackRequest(req, res, responseTime)
+      .catch(error => console.error('❌ Analytics tracking error:', error));
+    
+    // Call original send
+    return originalSend.call(this, data);
+  };
 
   next();
-});
+};
 
-// Helper functions for analytics
-function categorizeRequest(url) {
-  if (url.includes('/educational')) return 'Educational Overview';
-  if (url.includes('/safety')) return 'Safety Data';
-  if (url.includes('/pharmacology')) return 'Pharmacology';
-  if (url.includes('/properties')) return 'Properties';
-  if (url.includes('/autocomplete')) return 'Autocomplete';
-  if (url.includes('/pugview')) return 'Educational Annotations';
-  if (url.includes('/compound/name/')) return 'Name Search';
-  if (url.includes('/compound/cid/')) return 'CID Lookup';
-  if (url.includes('/compound/formula/')) return 'Formula Search';
-  if (url.includes('/compound/smiles/')) return 'SMILES Search';
-  if (url.includes('.PNG')) return 'Structure Image';
-  if (url.includes('.SDF')) return 'Structure File';
-  return 'Other';
-}
-
-function getEndpointCategory(url) {
-  if (url.includes('/api/pubchem')) return 'PubChem API';
-  if (url.includes('/api/pugview')) return 'Educational Content';
-  if (url.includes('/api/autocomplete')) return 'Search Suggestions';
-  if (url.includes('/api/docs')) return 'Documentation';
-  if (url.includes('/api/health')) return 'Health Check';
-  return 'Other';
-}
-
-function getAnalyticsSummary() {
-  return {
-    totalRequests: analytics.totalRequests,
-    recentRequestsCount: analytics.recentRequests.length,
-    topEndpoints: Object.entries(analytics.requestsByEndpoint)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 5),
-    uptimeMinutes: Math.floor((new Date() - analytics.startTime) / (1000 * 60)),
-    requestsThisHour: analytics.requestsByHour[new Date().getHours()] || 0
-  };
-}
-
-function broadcastToSSE(data) {
-  const message = `data: ${JSON.stringify(data)}\n\n`;
-  sseConnections.forEach(connection => {
-    try {
-      connection.write(message);
-    } catch (error) {
-      sseConnections.delete(connection);
-    }
-  });
-}
+// Apply analytics middleware to all routes (it will self-filter)
+app.use(analyticsMiddleware);
 
 // Rate limiting (excluding analytics and static routes)
 const limiter = rateLimit({
@@ -171,18 +119,91 @@ app.get('/', (req, res) => {
   }
 });
 
-// 📊 Analytics endpoints
-app.get('/api/analytics', (req, res) => {
-  res.json({
-    ...getAnalyticsSummary(),
-    recentRequests: analytics.recentRequests.slice(0, 20),
-    requestsByEndpoint: analytics.requestsByEndpoint,
-    requestsByHour: analytics.requestsByHour,
-    startTime: analytics.startTime
-  });
+// 📊 UPDATED: Analytics endpoints with database support
+app.get('/api/analytics', async (req, res) => {
+  try {
+    const summary = analyticsDB.getAnalyticsSummary();
+    const recentRequests = analyticsDB.getRecentRequests(20);
+    
+    res.json({
+      ...summary,
+      recentRequests: recentRequests,
+      database_connected: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
+      tracking_mode: analyticsDB.shouldTrackRequest ? 'selective' : 'disabled'
+    });
+  } catch (error) {
+    console.error('❌ Analytics endpoint error:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
 });
 
-// 📊 Server-Sent Events for real-time updates
+// NEW: Monthly analytics reports
+app.get('/api/analytics/monthly/:monthYear?', async (req, res) => {
+  try {
+    const monthYear = req.params.monthYear || new Date().toISOString().slice(0, 7);
+    
+    if (!process.env.SUPABASE_URL) {
+      return res.status(503).json({ 
+        error: 'Database not configured',
+        message: 'Monthly reports require database connection'
+      });
+    }
+
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+
+    const { data: summary, error } = await supabase
+      .from('monthly_summaries')
+      .select('*')
+      .eq('month_year', monthYear)
+      .single();
+
+    if (error) {
+      return res.status(404).json({ 
+        error: 'Month not found',
+        message: `No data available for ${monthYear}`
+      });
+    }
+
+    res.json(summary);
+  } catch (error) {
+    console.error('❌ Monthly analytics error:', error);
+    res.status(500).json({ error: 'Failed to fetch monthly analytics' });
+  }
+});
+
+// NEW: Archive endpoint (admin only)
+app.post('/api/analytics/archive/:monthYear', async (req, res) => {
+  // Add authentication here in production
+  const authHeader = req.headers.authorization;
+  if (authHeader !== `Bearer ${process.env.ADMIN_TOKEN}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const { monthYear } = req.params;
+    
+    if (!analyticsDB.archiveMonth) {
+      return res.status(503).json({ 
+        error: 'Archive not available',
+        message: 'Database analytics required for archival'
+      });
+    }
+
+    const filename = await analyticsDB.archiveMonth(monthYear);
+    
+    res.json({ 
+      success: true, 
+      message: `Month ${monthYear} archived successfully`,
+      filename: filename
+    });
+  } catch (error) {
+    console.error('❌ Archive error:', error);
+    res.status(500).json({ error: 'Archive failed', message: error.message });
+  }
+});
+
+// 📊 UPDATED: Server-Sent Events for real-time updates
 app.get('/api/analytics/stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -190,38 +211,45 @@ app.get('/api/analytics/stream', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   // Send initial data
+  const summary = analyticsDB.getAnalyticsSummary();
+  const recentRequests = analyticsDB.getRecentRequests(10);
+  
   res.write(`data: ${JSON.stringify({
     type: 'initial',
-    analytics: getAnalyticsSummary(),
-    recentRequests: analytics.recentRequests.slice(0, 10)
+    analytics: summary,
+    recentRequests: recentRequests
   })}\n\n`);
 
-  // Add connection to set
-  sseConnections.add(res);
-
-  // Clean up on client disconnect
-  req.on('close', () => {
-    sseConnections.delete(res);
-  });
-
-  // Keep alive ping every 30 seconds
-  const keepAlive = setInterval(() => {
+  // Send updates every 30 seconds
+  const interval = setInterval(() => {
     try {
-      res.write(`: keepalive\n\n`);
+      const currentSummary = analyticsDB.getAnalyticsSummary();
+      const currentRequests = analyticsDB.getRecentRequests(5);
+      
+      res.write(`data: ${JSON.stringify({
+        type: 'update',
+        analytics: currentSummary,
+        recentRequests: currentRequests
+      })}\n\n`);
     } catch (error) {
-      clearInterval(keepAlive);
-      sseConnections.delete(res);
+      clearInterval(interval);
     }
   }, 30000);
+
+  req.on('close', () => {
+    clearInterval(interval);
+  });
 });
 
-// 📊 Analytics Dashboard HTML page
+// Analytics Dashboard HTML page
 app.get('/api/dashboard', (req, res) => {
   res.send(generateDashboardPage());
 });
 
 // Health check endpoint (enhanced with analytics)
 app.get('/api/health', (req, res) => {
+  const analyticsStatus = analyticsDB.getAnalyticsSummary();
+  
   res.json({ 
     status: 'healthy', 
     service: 'moleXa Educational Proxy API',
@@ -229,13 +257,18 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     base_url: 'https://molexa.org',
     cache_stats: cache.getStats(),
-    analytics: getAnalyticsSummary(),
+    analytics: {
+      ...analyticsStatus,
+      database_connected: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
+      tracking_enabled: !!analyticsDB.shouldTrackRequest
+    },
     features: [
       'PUG-REST API (computed properties)',
       'PUG-View API (educational annotations)', 
       'Autocomplete suggestions',
       'Enhanced educational endpoints',
-      'Live analytics dashboard'
+      'Selective analytics tracking',
+      'Database-backed analytics storage'
     ]
   });
 });
@@ -277,7 +310,7 @@ app.get('/api/json/docs', (req, res) => {
   res.json({
     service: 'moleXa Educational Proxy API',
     version: '2.1.0',
-    description: 'Enhanced proxy server for educational molecular data access with live analytics',
+    description: 'Enhanced proxy server for educational molecular data access with selective analytics',
     base_url: 'https://molexa.org/api',
     homepage: 'https://molexa.org',
     documentation: 'https://molexa.org/api/docs',
@@ -286,7 +319,9 @@ app.get('/api/json/docs', (req, res) => {
       docs: 'GET /api/docs - Interactive documentation',
       docs_json: 'GET /api/json/docs - This JSON documentation',
       analytics: 'GET /api/analytics - Analytics data (JSON)',
+      analytics_monthly: 'GET /api/analytics/monthly/{month} - Monthly analytics report',
       analytics_stream: 'GET /api/analytics/stream - Real-time SSE stream',
+      analytics_archive: 'POST /api/analytics/archive/{month} - Archive monthly data (admin)',
       dashboard: 'GET /api/dashboard - Live analytics dashboard',
       pubchem: 'GET /api/pubchem/* - Proxy PubChem REST API calls',
       educational: 'GET /api/pubchem/compound/{id}/educational - Comprehensive educational data',
@@ -304,46 +339,14 @@ app.get('/api/json/docs', (req, res) => {
       autocomplete: '/api/autocomplete/caffe?limit=5'
     },
     features: [
-      'Live request analytics with educational impact metrics',
+      'Selective analytics tracking (only real API usage)',
+      'Database-backed persistent analytics storage',
+      'Monthly data archival and reporting',
+      'Privacy-protected analytics (hashed IPs)',
       'Real-time usage statistics via Server-Sent Events',
-      'Educational impact tracking and visualization', 
-      'Integrated documentation with live analytics dashboard'
+      'Educational impact tracking and visualization'
     ]
   });
-});
-
-// Analytics endpoints with /api prefix
-app.get('/api/analytics', (req, res) => {
-  res.json({
-    ...getAnalyticsSummary(),
-    recentRequests: analytics.recentRequests.slice(0, 20),
-    requestsByEndpoint: analytics.requestsByEndpoint,
-    requestsByHour: analytics.requestsByHour,
-    startTime: analytics.startTime
-  });
-});
-
-app.get('/api/analytics/stream', (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-
-  res.write(`data: ${JSON.stringify({
-    type: 'initial',
-    analytics: getAnalyticsSummary(),
-    recentRequests: analytics.recentRequests.slice(0, 10)
-  })}\n\n`);
-
-  sseConnections.add(res);
-
-  req.on('close', () => {
-    sseConnections.delete(res);
-  });
-});
-
-app.get('/api/dashboard', (req, res) => {
-  res.send(generateDashboardPage());
 });
 
 // Enhanced compound data endpoint with educational properties
@@ -924,7 +927,7 @@ function generateMainDocsPage() {
                     </h1>
                     <p class="lead mb-4">
                         Enhanced proxy server providing comprehensive access to PubChem's molecular database 
-                        with educational context, safety information, and live analytics.
+                        with educational context, safety information, and selective analytics tracking.
                     </p>
                     <div class="d-flex flex-wrap gap-3 mb-4">
                         <span class="badge bg-light text-dark px-3 py-2">
@@ -937,7 +940,7 @@ function generateMainDocsPage() {
                             <i class="fas fa-shield-alt me-1"></i>Safety Data
                         </span>
                         <span class="badge bg-light text-dark px-3 py-2">
-                            <i class="fas fa-chart-line me-1"></i>Live Analytics
+                            <i class="fas fa-chart-line me-1"></i>Smart Analytics
                         </span>
                     </div>
                     <div class="d-flex gap-3">
@@ -960,6 +963,7 @@ function generateMainDocsPage() {
                         <code style="background: rgba(255,255,255,0.2); padding: 0.5rem; border-radius: 0.25rem;">
                             https://molexa.org/api
                         </code>
+                        <small class="d-block mt-2 text-light">Smart analytics - Only API usage tracked</small>
                     </div>
                 </div>
             </div>
@@ -1013,91 +1017,6 @@ console.log('Suggestions:', suggestions.suggestions);
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-6">
-                    <div class="card feature-card">
-                        <div class="card-header bg-info text-white">
-                            <h5 class="mb-0">
-                                <i class="fas fa-chart-line me-2"></i>
-                                Live Analytics
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="code-example">
-// Connect to real-time analytics stream
-const eventSource = new EventSource('https://molexa.org/api/analytics/stream');
-
-eventSource.onmessage = function(event) {
-    const data = JSON.parse(event.data);
-    console.log('Live update:', data);
-};
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-6">
-                    <div class="card feature-card">
-                        <div class="card-header bg-warning text-dark">
-                            <h5 class="mb-0">
-                                <i class="fas fa-flask me-2"></i>
-                                Molecular Properties
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="code-example">
-// Get molecular properties with educational context
-const response = await fetch('https://molexa.org/api/pubchem/compound/cid/2244/property/MolecularFormula,MolecularWeight/JSON');
-const data = await response.json();
-
-console.log('Properties:', data.PropertyTable.Properties[0]);
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-5 bg-light">
-        <div class="container">
-            <h2 class="text-center mb-5">
-                <i class="fas fa-link text-primary me-2"></i>
-                API Endpoints
-            </h2>
-            <div class="row">
-                <div class="col-md-6">
-                    <h5>Core Endpoints</h5>
-                    <ul class="list-unstyled">
-                        <li class="mb-2">
-                            <code>GET /api/health</code><br>
-                            <small class="text-muted">Service health check</small>
-                        </li>
-                        <li class="mb-2">
-                            <code>GET /api/analytics</code><br>
-                            <small class="text-muted">Usage statistics</small>
-                        </li>
-                        <li class="mb-2">
-                            <code>GET /api/dashboard</code><br>
-                            <small class="text-muted">Live analytics dashboard</small>
-                        </li>
-                    </ul>
-                </div>
-                <div class="col-md-6">
-                    <h5>Educational Endpoints</h5>
-                    <ul class="list-unstyled">
-                        <li class="mb-2">
-                            <code>GET /api/pubchem/compound/{id}/educational</code><br>
-                            <small class="text-muted">Comprehensive educational data</small>
-                        </li>
-                        <li class="mb-2">
-                            <code>GET /api/autocomplete/{query}</code><br>
-                            <small class="text-muted">Chemical name suggestions</small>
-                        </li>
-                        <li class="mb-2">
-                            <code>GET /api/pubchem/*</code><br>
-                            <small class="text-muted">PubChem API proxy</small>
-                        </li>
-                    </ul>
-                </div>
             </div>
         </div>
     </section>
@@ -1139,7 +1058,7 @@ function generateDashboardPage() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>moleXa API - Live Analytics Dashboard</title>
+    <title>moleXa API - Selective Analytics Dashboard</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -1164,6 +1083,13 @@ function generateDashboardPage() {
             padding: 0.75rem;
             border-radius: 0.375rem;
         }
+        .tracking-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -1174,7 +1100,7 @@ function generateDashboardPage() {
             </a>
             <div class="d-flex">
                 <span class="badge bg-light text-dark me-2">
-                    <i class="fas fa-circle text-success me-1"></i>Live
+                    <i class="fas fa-circle text-success me-1"></i>Live & Selective
                 </span>
                 <a href="/api/docs" class="btn btn-outline-light btn-sm">
                     <i class="fas fa-book me-1"></i>API Docs
@@ -1184,13 +1110,28 @@ function generateDashboardPage() {
     </nav>
 
     <div class="container mt-4">
+        <div class="tracking-info">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5><i class="fas fa-target me-2"></i>Selective Analytics</h5>
+                    <p class="mb-0">Only tracking actual API usage - no documentation views or health checks. Privacy-protected with database storage.</p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <div class="badge bg-light text-dark p-2">
+                        <i class="fas fa-database me-1"></i>
+                        <span id="dbStatus">Checking...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="card stat-card">
                     <div class="card-body text-center">
-                        <i class="fas fa-globe fa-2x text-primary mb-2"></i>
+                        <i class="fas fa-flask fa-2x text-primary mb-2"></i>
                         <h3 class="mb-0" id="totalRequests">0</h3>
-                        <p class="text-muted mb-0">Total Requests</p>
+                        <p class="text-muted mb-0">API Requests</p>
                     </div>
                 </div>
             </div>
@@ -1215,9 +1156,9 @@ function generateDashboardPage() {
             <div class="col-md-3">
                 <div class="card stat-card">
                     <div class="card-body text-center">
-                        <i class="fas fa-server fa-2x text-warning mb-2"></i>
-                        <h3 class="mb-0" id="uptime">0m</h3>
-                        <p class="text-muted mb-0">Uptime</p>
+                        <i class="fas fa-shield-alt fa-2x text-warning mb-2"></i>
+                        <h3 class="mb-0" id="safetyRequests">0</h3>
+                        <p class="text-muted mb-0">Safety Data</p>
                     </div>
                 </div>
             </div>
@@ -1229,14 +1170,15 @@ function generateDashboardPage() {
                     <div class="card-header">
                         <h5 class="mb-0">
                             <i class="fas fa-activity text-primary me-2"></i>
-                            Recent Activity
+                            Recent API Activity
+                            <span class="badge bg-primary ms-2" id="activityCount">0</span>
                         </h5>
                     </div>
                     <div class="card-body p-0">
                         <div class="activity-feed" id="activityFeed">
                             <div class="text-center text-muted">
                                 <i class="fas fa-hourglass-half fa-2x mb-3"></i>
-                                <p>Loading recent activity...</p>
+                                <p>Loading recent API activity...</p>
                             </div>
                         </div>
                     </div>
@@ -1252,20 +1194,35 @@ function generateDashboardPage() {
             .then(data => {
                 document.getElementById('totalRequests').textContent = data.totalRequests;
                 document.getElementById('requestsThisHour').textContent = data.requestsThisHour || 0;
-                document.getElementById('uptime').textContent = data.uptimeMinutes + 'm';
                 
+                // Update database status
+                const dbStatus = document.getElementById('dbStatus');
+                if (data.database_connected) {
+                    dbStatus.innerHTML = '<i class="fas fa-database me-1"></i>Database Connected';
+                    dbStatus.className = 'badge bg-success text-white p-2';
+                } else {
+                    dbStatus.innerHTML = '<i class="fas fa-memory me-1"></i>Memory Only';
+                    dbStatus.className = 'badge bg-warning text-dark p-2';
+                }
+                
+                // Count educational and safety requests
                 const educationalCount = (data.recentRequests || []).filter(r => 
-                    r.type && r.type.toLowerCase().includes('educational')).length;
+                    r.type && (r.type.toLowerCase().includes('educational') || r.type.toLowerCase().includes('autocomplete'))).length;
+                const safetyCount = (data.recentRequests || []).filter(r => 
+                    r.type && r.type.toLowerCase().includes('safety')).length;
+                    
                 document.getElementById('educationalRequests').textContent = educationalCount;
+                document.getElementById('safetyRequests').textContent = safetyCount;
+                document.getElementById('activityCount').textContent = data.recentRequests?.length || 0;
                 
                 // Show recent requests
                 const feed = document.getElementById('activityFeed');
                 if (data.recentRequests && data.recentRequests.length > 0) {
-                    feed.innerHTML = data.recentRequests.slice(0, 10).map(req => \`
+                    feed.innerHTML = data.recentRequests.slice(0, 15).map(req => \`
                         <div class="recent-request">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    <span class="badge bg-primary me-2">\${req.type}</span>
+                                    <span class="badge bg-primary me-2">\${req.type || 'API Request'}</span>
                                     <small>\${req.endpoint}</small>
                                 </div>
                                 <small class="text-muted">\${new Date(req.timestamp).toLocaleTimeString()}</small>
@@ -1273,17 +1230,58 @@ function generateDashboardPage() {
                         </div>
                     \`).join('');
                 } else {
-                    feed.innerHTML = '<div class="text-center text-muted"><p>No recent activity</p></div>';
+                    feed.innerHTML = '<div class="text-center text-muted"><p>No API requests yet - only actual API usage is tracked</p></div>';
                 }
             })
             .catch(error => {
                 console.error('Error loading analytics:', error);
+                document.getElementById('dbStatus').innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error';
+                document.getElementById('dbStatus').className = 'badge bg-danger text-white p-2';
             });
     </script>
 </body>
 </html>
   `;
 }
+
+// 📊 Initialize analytics system on startup
+async function initializeAnalytics() {
+  console.log('📊 Initializing selective analytics system...');
+  
+  if (analyticsDB.initializeCache) {
+    try {
+      await analyticsDB.initializeCache();
+      console.log('📊 Analytics cache initialized successfully');
+    } catch (error) {
+      console.error('❌ Analytics initialization error:', error);
+    }
+  }
+  
+  if (analyticsDB.checkAndArchivePreviousMonth) {
+    try {
+      await analyticsDB.checkAndArchivePreviousMonth();
+    } catch (error) {
+      console.error('❌ Auto-archival check failed:', error);
+    }
+  }
+  
+  // Set up monthly archival cron job (runs at 1 AM on the 1st of each month)
+  if (process.env.NODE_ENV === 'production' && analyticsDB.checkAndArchivePreviousMonth) {
+    try {
+      const cron = require('node-cron');
+      cron.schedule('0 1 1 * *', async () => {
+        console.log('📊 Running monthly auto-archival...');
+        await analyticsDB.checkAndArchivePreviousMonth();
+      });
+      console.log('📊 Monthly archival cron job scheduled');
+    } catch (error) {
+      console.log('📊 Cron not available, manual archival only');
+    }
+  }
+}
+
+// Initialize analytics on startup
+initializeAnalytics().catch(console.error);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -1297,13 +1295,11 @@ app.use('*', (req, res) => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM received, shutting down gracefully');
-  sseConnections.forEach(connection => connection.end());
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('\n🛑 SIGINT received, shutting down gracefully');
-  sseConnections.forEach(connection => connection.end());
   process.exit(0);
 });
 
