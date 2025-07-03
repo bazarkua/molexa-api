@@ -1,5 +1,5 @@
 // Enhanced PubChem Backend Proxy Server for Educational Applications
-// Now with Live Request Analytics Dashboard
+// Optimized for molexa.org/api/ URL structure
 
 const express = require('express');
 const cors = require('cors');
@@ -16,10 +16,10 @@ const port = process.env.PORT || 3001;
 const cache = new NodeCache({ stdTTL: 86400 });
 const autocompleteCache = new NodeCache({ stdTTL: 3600 });
 
-// 📊 NEW: Analytics tracking
+// 📊 Analytics tracking
 const analytics = {
   totalRequests: 0,
-  recentRequests: [], // Keep last 100 requests
+  recentRequests: [], 
   requestsByEndpoint: {},
   requestsByHour: {},
   startTime: new Date()
@@ -28,21 +28,53 @@ const analytics = {
 // Store SSE connections for real-time updates
 const sseConnections = new Set();
 
-// Enable CORS for all routes
+// Enable CORS for all routes - optimized for production
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:5173'],
-  credentials: true
+  origin: [
+    'https://molexa.org',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://molexa-frontend.vercel.app' // Add your frontend domain
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
 app.use(express.json());
 
+// Serve static files for API documentation assets
+app.use('/static', express.static(path.join(__dirname, '..', 'public')));
 
-// ⚡ CRITICAL: Serve static files FIRST
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// ===== ROOT ROUTES (API Info) =====
 
+// Root endpoint - API information
+app.get('/', (req, res) => {
+  res.json({
+    service: 'moleXa Educational Proxy API',
+    version: '2.1.0',
+    description: 'Enhanced proxy server for educational molecular data access',
+    documentation: {
+      interactive: '/api/docs',
+      json: '/api/json/docs',
+      live_analytics: '/api/dashboard'
+    },
+    base_url: 'https://molexa.org/api',
+    endpoints: {
+      health: '/api/health',
+      analytics: '/api/analytics',
+      pubchem_proxy: '/api/pubchem/*',
+      educational_data: '/api/pubchem/compound/{id}/educational',
+      safety_info: '/api/pugview/compound/{cid}/safety',
+      autocomplete: '/api/autocomplete/{query}'
+    },
+    status: 'online',
+    uptime_minutes: Math.floor((new Date() - analytics.startTime) / (1000 * 60))
+  });
+});
 
-
-// 📊 NEW: Analytics middleware - Track all API requests
+// 📊 Analytics middleware - Track all API requests
 app.use('/api', (req, res, next) => {
   const requestData = {
     id: Date.now() + Math.random().toString(36).substr(2, 9),
@@ -58,22 +90,18 @@ app.use('/api', (req, res, next) => {
   analytics.totalRequests++;
   analytics.recentRequests.unshift(requestData);
   
-  // Keep only last 100 requests
   if (analytics.recentRequests.length > 100) {
     analytics.recentRequests = analytics.recentRequests.slice(0, 100);
   }
 
-  // Track by endpoint
   const endpointCategory = getEndpointCategory(req.originalUrl);
   analytics.requestsByEndpoint[endpointCategory] = (analytics.requestsByEndpoint[endpointCategory] || 0) + 1;
 
-  // Track by hour
   const hour = new Date().getHours();
   analytics.requestsByHour[hour] = (analytics.requestsByHour[hour] || 0) + 1;
 
   console.log(`📊 [${analytics.totalRequests}] ${req.method} ${req.originalUrl} - ${requestData.type}`);
 
-  // Broadcast to SSE connections
   broadcastToSSE({
     type: 'new_request',
     data: requestData,
@@ -132,7 +160,7 @@ function broadcastToSSE(data) {
   });
 }
 
-// Rate limiting (excluding analytics and static routes)
+// Rate limiting for API endpoints
 const limiter = rateLimit({
   windowMs: 1000,
   max: 5,
@@ -148,396 +176,61 @@ app.use('/api/pubchem', limiter);
 app.use('/api/pugview', limiter);
 app.use('/api/autocomplete', limiter);
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'docs.html'));
+// ===== API DOCUMENTATION ENDPOINTS =====
+
+// Main API Documentation Homepage - this is the primary entry point
+app.get('/api/docs', (req, res) => {
+  const docsHtml = generateMainDocsPage();
+  res.send(docsHtml);
 });
 
-// 📊 NEW: Analytics endpoints
-app.get('/analytics', (req, res) => {
+// JSON API Documentation
+app.get('/api/json/docs', (req, res) => {
   res.json({
-    ...getAnalyticsSummary(),
-    recentRequests: analytics.recentRequests.slice(0, 20),
-    requestsByEndpoint: analytics.requestsByEndpoint,
-    requestsByHour: analytics.requestsByHour,
-    startTime: analytics.startTime
+    service: 'moleXa Educational Proxy API',
+    version: '2.1.0',
+    description: 'Enhanced proxy server for educational molecular data access with live analytics',
+    base_url: 'https://molexa.org/api',
+    endpoints: {
+      health: 'GET /api/health - Service health check with analytics',
+      docs: 'GET /api/docs - Interactive documentation homepage',
+      analytics: 'GET /api/analytics - Analytics data (JSON)',
+      analytics_stream: 'GET /api/analytics/stream - Real-time SSE stream',
+      dashboard: 'GET /api/dashboard - Live analytics dashboard',
+      pubchem: 'GET /api/pubchem/* - Proxy PubChem REST API calls',
+      educational: 'GET /api/pubchem/compound/{id}/educational - Comprehensive educational data',
+      pugview: 'GET /api/pugview/compound/{cid}/{section} - Educational annotations',
+      autocomplete: 'GET /api/autocomplete/{query} - Chemical name suggestions'
+    },
+    examples: {
+      search_by_name: '/api/pubchem/compound/name/aspirin/cids/JSON',
+      get_properties: '/api/pubchem/compound/cid/2244/property/MolecularFormula,MolecularWeight/JSON',
+      get_sdf: '/api/pubchem/compound/cid/2244/SDF',
+      get_image: '/api/pubchem/compound/cid/2244/PNG',
+      educational_data: '/api/pubchem/compound/caffeine/educational?type=name',
+      safety_info: '/api/pugview/compound/2244/safety?heading=Toxicity',
+      autocomplete: '/api/autocomplete/caffe?limit=5'
+    },
+    features: [
+      'Live request analytics with educational impact metrics',
+      'Real-time usage statistics via Server-Sent Events',
+      'Educational impact tracking and visualization',
+      'Comprehensive safety and toxicity information',
+      'Enhanced molecular properties with explanations'
+    ]
   });
 });
 
-// 📊 NEW: Server-Sent Events for real-time updates
-app.get('/analytics/stream', (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-
-  // Send initial data
-  res.write(`data: ${JSON.stringify({
-    type: 'initial',
-    analytics: getAnalyticsSummary(),
-    recentRequests: analytics.recentRequests.slice(0, 10)
-  })}\n\n`);
-
-  // Add connection to set
-  sseConnections.add(res);
-
-  // Clean up on client disconnect
-  req.on('close', () => {
-    sseConnections.delete(res);
-  });
-
-  // Keep alive ping every 30 seconds
-  const keepAlive = setInterval(() => {
-    try {
-      res.write(`: keepalive\n\n`);
-    } catch (error) {
-      clearInterval(keepAlive);
-      sseConnections.delete(res);
-    }
-  }, 30000);
-});
-
-// 📊 NEW: Analytics Dashboard HTML page
-app.get('/dashboard', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>moleXa API - Live Analytics Dashboard</title>
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-        <style>
-            body { background: #f8f9fa; }
-            .stat-card { transition: transform 0.2s; }
-            .stat-card:hover { transform: translateY(-2px); }
-            .pulse { animation: pulse 2s infinite; }
-            @keyframes pulse {
-                0% { transform: scale(1); }
-                50% { transform: scale(1.05); }
-                100% { transform: scale(1); }
-            }
-            .recent-request {
-                border-left: 3px solid #007bff;
-                background: white;
-                margin-bottom: 0.5rem;
-                padding: 0.75rem;
-                border-radius: 0.375rem;
-                transition: all 0.3s ease;
-            }
-            .recent-request.new {
-                border-left-color: #28a745;
-                box-shadow: 0 0 15px rgba(40, 167, 69, 0.3);
-            }
-            .activity-feed {
-                height: 400px;
-                overflow-y: auto;
-            }
-            .navbar { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-            .badge-request-type {
-                font-size: 0.7rem;
-                padding: 0.25rem 0.5rem;
-            }
-            .chart-container {
-                background: white;
-                border-radius: 0.5rem;
-                padding: 1.5rem;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            }
-        </style>
-    </head>
-    <body>
-        <!-- Navigation -->
-        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-            <div class="container">
-                <a class="navbar-brand fw-bold" href="/">
-                    <i class="fas fa-chart-line me-2"></i>
-                    moleXa API Analytics
-                </a>
-                <div class="d-flex">
-                    <span class="badge bg-light text-dark me-2" id="status">
-                        <i class="fas fa-circle text-success me-1"></i>Live
-                    </span>
-                    <a href="/docs" class="btn btn-outline-light btn-sm">
-                        <i class="fas fa-book me-1"></i>API Docs
-                    </a>
-                </div>
-            </div>
-        </nav>
-
-        <div class="container mt-4">
-            <!-- Stats Row -->
-            <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="card stat-card border-0 shadow-sm">
-                        <div class="card-body text-center">
-                            <i class="fas fa-globe fa-2x text-primary mb-2"></i>
-                            <h3 class="mb-0" id="totalRequests">0</h3>
-                            <p class="text-muted mb-0">Total Requests</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card stat-card border-0 shadow-sm">
-                        <div class="card-body text-center">
-                            <i class="fas fa-clock fa-2x text-success mb-2"></i>
-                            <h3 class="mb-0" id="requestsThisHour">0</h3>
-                            <p class="text-muted mb-0">This Hour</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card stat-card border-0 shadow-sm">
-                        <div class="card-body text-center">
-                            <i class="fas fa-server fa-2x text-info mb-2"></i>
-                            <h3 class="mb-0" id="uptime">0m</h3>
-                            <p class="text-muted mb-0">Uptime</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card stat-card border-0 shadow-sm">
-                        <div class="card-body text-center">
-                            <i class="fas fa-users fa-2x text-warning mb-2"></i>
-                            <h3 class="mb-0" id="activeConnections">1</h3>
-                            <p class="text-muted mb-0">Live Viewers</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <!-- Recent Activity -->
-                <div class="col-lg-8">
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header bg-white">
-                            <h5 class="mb-0">
-                                <i class="fas fa-activity text-primary me-2"></i>
-                                Live Request Activity
-                                <span class="badge bg-primary ms-2" id="activityCount">0</span>
-                            </h5>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="activity-feed p-3" id="activityFeed">
-                                <div class="text-center text-muted">
-                                    <i class="fas fa-hourglass-half fa-2x mb-3"></i>
-                                    <p>Waiting for API requests...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Top Endpoints -->
-                <div class="col-lg-4">
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header bg-white">
-                            <h5 class="mb-0">
-                                <i class="fas fa-chart-pie text-success me-2"></i>
-                                Popular Endpoints
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div id="topEndpoints">
-                                <div class="text-center text-muted">
-                                    <i class="fas fa-chart-bar fa-2x mb-3"></i>
-                                    <p>No data yet</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Educational Impact -->
-                    <div class="card border-0 shadow-sm mt-4">
-                        <div class="card-header bg-white">
-                            <h5 class="mb-0">
-                                <i class="fas fa-graduation-cap text-info me-2"></i>
-                                Educational Impact
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row text-center">
-                                <div class="col-6">
-                                    <div class="mb-3">
-                                        <h4 class="text-primary" id="safetyRequests">0</h4>
-                                        <small class="text-muted">Safety Lookups</small>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="mb-3">
-                                        <h4 class="text-success" id="educationalRequests">0</h4>
-                                        <small class="text-muted">Learning Resources</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="text-center">
-                                <i class="fas fa-heart text-danger"></i>
-                                <small class="text-muted">Empowering chemistry education</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <script>
-            // Global state
-            let totalRequests = 0;
-            let recentRequests = [];
-            
-            // Connect to SSE stream
-            const eventSource = new EventSource('/analytics/stream');
-            
-            eventSource.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                
-                if (data.type === 'initial') {
-                    updateAnalytics(data.analytics);
-                    updateRecentRequests(data.recentRequests);
-                } else if (data.type === 'new_request') {
-                    addNewRequest(data.data);
-                    updateAnalytics(data.analytics);
-                }
-            };
-            
-            eventSource.onerror = function(event) {
-                document.getElementById('status').innerHTML = 
-                    '<i class="fas fa-circle text-danger me-1"></i>Disconnected';
-            };
-            
-            function updateAnalytics(analytics) {
-                document.getElementById('totalRequests').textContent = analytics.totalRequests;
-                document.getElementById('requestsThisHour').textContent = analytics.requestsThisHour;
-                document.getElementById('uptime').textContent = analytics.uptimeMinutes + 'm';
-                
-                // Update top endpoints
-                updateTopEndpoints(analytics.topEndpoints);
-                
-                // Update educational impact counters
-                updateEducationalImpact();
-            }
-            
-            function updateTopEndpoints(topEndpoints) {
-                const container = document.getElementById('topEndpoints');
-                if (!topEndpoints || topEndpoints.length === 0) return;
-                
-                container.innerHTML = topEndpoints.map(([endpoint, count]) => \`
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-truncate">\${endpoint}</span>
-                        <span class="badge bg-primary">\${count}</span>
-                    </div>
-                \`).join('');
-            }
-            
-            function addNewRequest(request) {
-                recentRequests.unshift(request);
-                if (recentRequests.length > 20) {
-                    recentRequests = recentRequests.slice(0, 20);
-                }
-                
-                const feed = document.getElementById('activityFeed');
-                const requestElement = createRequestElement(request, true);
-                
-                if (feed.children.length === 0 || feed.children[0].classList.contains('text-center')) {
-                    feed.innerHTML = '';
-                }
-                
-                feed.insertBefore(requestElement, feed.firstChild);
-                
-                // Pulse effect for new request
-                requestElement.classList.add('pulse');
-                setTimeout(() => requestElement.classList.remove('pulse'), 2000);
-                
-                // Update activity count
-                document.getElementById('activityCount').textContent = recentRequests.length;
-                
-                // Remove old requests
-                const children = Array.from(feed.children);
-                if (children.length > 20) {
-                    children.slice(20).forEach(child => child.remove());
-                }
-            }
-            
-            function updateRecentRequests(requests) {
-                recentRequests = requests;
-                const feed = document.getElementById('activityFeed');
-                
-                if (requests.length === 0) return;
-                
-                feed.innerHTML = requests.map(request => 
-                    createRequestElement(request).outerHTML
-                ).join('');
-                
-                document.getElementById('activityCount').textContent = requests.length;
-            }
-            
-            function createRequestElement(request, isNew = false) {
-                const div = document.createElement('div');
-                div.className = \`recent-request \${isNew ? 'new' : ''}\`;
-                
-                const timeAgo = new Date(request.timestamp).toLocaleTimeString();
-                const typeColor = getTypeColor(request.type);
-                
-                div.innerHTML = \`
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="flex-grow-1">
-                            <div class="d-flex align-items-center mb-1">
-                                <span class="badge \${typeColor} badge-request-type me-2">\${request.type}</span>
-                                <small class="text-muted">\${timeAgo}</small>
-                            </div>
-                            <div class="small text-truncate" style="max-width: 300px;">
-                                <span class="badge bg-secondary me-1">\${request.method}</span>
-                                \${request.endpoint}
-                            </div>
-                        </div>
-                        <i class="fas fa-globe text-muted"></i>
-                    </div>
-                \`;
-                
-                return div;
-            }
-            
-            function getTypeColor(type) {
-                const colors = {
-                    'Educational Overview': 'bg-primary',
-                    'Safety Data': 'bg-warning',
-                    'Pharmacology': 'bg-info',
-                    'Properties': 'bg-secondary',
-                    'Autocomplete': 'bg-success',
-                    'Educational Annotations': 'bg-purple',
-                    'Name Search': 'bg-primary',
-                    'Structure Image': 'bg-info',
-                    'Structure File': 'bg-secondary'
-                };
-                return colors[type] || 'bg-light text-dark';
-            }
-            
-            function updateEducationalImpact() {
-                const safetyCount = recentRequests.filter(r => 
-                    r.type.includes('Safety') || r.endpoint.includes('safety')).length;
-                const educationalCount = recentRequests.filter(r => 
-                    r.type.includes('Educational') || r.endpoint.includes('educational')).length;
-                
-                document.getElementById('safetyRequests').textContent = safetyCount;
-                document.getElementById('educationalRequests').textContent = educationalCount;
-            }
-            
-            // Auto-refresh page title with request count
-            setInterval(() => {
-                document.title = \`moleXa API (\${totalRequests}) - Live Analytics\`;
-            }, 1000);
-        </script>
-    </body>
-    </html>
-  `);
-});
+// ===== ANALYTICS ENDPOINTS =====
 
 // Health check endpoint (enhanced with analytics)
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
-    service: 'PubChem Educational Proxy',
+    service: 'moleXa Educational Proxy API',
+    version: '2.1.0',
     timestamp: new Date().toISOString(),
+    base_url: 'https://molexa.org/api',
     cache_stats: cache.getStats(),
     analytics: getAnalyticsSummary(),
     features: [
@@ -549,6 +242,55 @@ app.get('/health', (req, res) => {
     ]
   });
 });
+
+// Analytics data endpoint
+app.get('/api/analytics', (req, res) => {
+  res.json({
+    ...getAnalyticsSummary(),
+    recentRequests: analytics.recentRequests.slice(0, 20),
+    requestsByEndpoint: analytics.requestsByEndpoint,
+    requestsByHour: analytics.requestsByHour,
+    startTime: analytics.startTime,
+    base_url: 'https://molexa.org/api'
+  });
+});
+
+// Server-Sent Events for real-time updates
+app.get('/api/analytics/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  res.write(`data: ${JSON.stringify({
+    type: 'initial',
+    analytics: getAnalyticsSummary(),
+    recentRequests: analytics.recentRequests.slice(0, 10)
+  })}\n\n`);
+
+  sseConnections.add(res);
+
+  req.on('close', () => {
+    sseConnections.delete(res);
+  });
+
+  const keepAlive = setInterval(() => {
+    try {
+      res.write(`: keepalive\n\n`);
+    } catch (error) {
+      clearInterval(keepAlive);
+      sseConnections.delete(res);
+    }
+  }, 30000);
+});
+
+// Live Analytics Dashboard
+app.get('/api/dashboard', (req, res) => {
+  const dashboardHtml = generateDashboardPage();
+  res.send(dashboardHtml);
+});
+
+// ===== EDUCATIONAL ENDPOINTS =====
 
 // Enhanced compound data endpoint with educational properties
 app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
@@ -569,7 +311,6 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
     
     let cid = identifier;
     if (identifierType !== 'cid') {
-      // URL encode the identifier for proper API calls
       const encodedIdentifier = encodeURIComponent(identifier.toLowerCase().trim());
       console.log(`🔍 Searching for CID using ${identifierType}: ${encodedIdentifier}`);
       
@@ -591,7 +332,7 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
       }
     }
 
-    // Step 2: Fetch comprehensive properties
+    // Fetch comprehensive properties
     const properties = [
       'MolecularWeight',
       'HBondDonorCount',
@@ -604,11 +345,9 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
     console.log(`🧪 Fetching properties for CID: ${cid}`);
     const basicData = await fetchFromPubChem(`compound/cid/${cid}/property/${properties}/JSON`);
     
-    // Step 3: Get synonyms for educational context
     console.log(`📚 Fetching synonyms for CID: ${cid}`);
     const synonymsData = await fetchFromPubChem(`compound/cid/${cid}/synonyms/JSON`);
     
-    // Step 4: Get 3D conformer data for structure visualization  
     let conformerData = null;
     try {
       console.log(`🔬 Fetching 3D conformer data for CID: ${cid}`);
@@ -626,7 +365,7 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
         found_via: identifierType !== 'cid' ? `${identifierType} search` : 'direct CID'
       },
       basic_properties: basicData.PropertyTable?.Properties?.[0] || {},
-      synonyms: synonymsData.InformationList?.Information?.[0]?.Synonym?.slice(0, 10) || [], // Limit to first 10 synonyms
+      synonyms: synonymsData.InformationList?.Information?.[0]?.Synonym?.slice(0, 10) || [],
       structure_3d: conformerData?.PC_Compounds?.[0] || null,
       image_urls: {
         '2d_structure': `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/PNG`,
@@ -648,7 +387,6 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
       ]
     };
 
-    // Add educational context to properties
     if (educationalData.basic_properties) {
       educationalData.educational_context = addEducationalContext([educationalData.basic_properties]);
     }
@@ -661,7 +399,6 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
   } catch (error) {
     console.error('❌ Educational data error:', error);
     
-    // More specific error handling
     if (error.message.includes('PubChem API error: 400')) {
       res.status(400).json({
         error: 'Invalid compound search',
@@ -691,124 +428,6 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
-  }
-});
-
-// Helper function to fetch from PubChem with enhanced error handling
-async function fetchFromPubChem(path) {
-  const pubchemUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/${path}`;
-  console.log(`🌐 PubChem API call: ${pubchemUrl}`);
-  
-  await new Promise(resolve => setTimeout(resolve, 200));
-  
-  const response = await fetch(pubchemUrl, {
-    headers: {
-      'User-Agent': 'MoleculeStudio/1.0 (Educational Research Tool)',
-      'Accept': 'application/json'
-    },
-    timeout: 30000
-  });
-
-  if (!response.ok) {
-    // Get the actual error response from PubChem
-    let errorDetails = '';
-    try {
-      const errorText = await response.text();
-      console.error(`❌ PubChem error response: ${errorText}`);
-      errorDetails = errorText;
-    } catch (e) {
-      errorDetails = 'Unable to read error details';
-    }
-    
-    throw new Error(`PubChem API error: ${response.status} - ${errorDetails}`);
-  }
-
-  const contentType = response.headers.get('content-type') || 'application/json';
-  
-  if (contentType.includes('application/json')) {
-    return await response.json();
-  } else {
-    return await response.text();
-  }
-}
-
-// Serve the integrated documentation page with live analytics
-app.get('/api/docs', (req, res) => {
-  try {
-    const docsPath = path.join(__dirname, '..', 'public', 'docs.html');  
-    // Check if the integrated docs file exists
-    if (fs.existsSync(docsPath)) {
-      res.sendFile(docsPath);
-    } else {
-      // Fallback: serve the integrated HTML directly (the one we created)
-      res.send(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>moleXa Educational API - Documentation & Live Analytics</title>
-            <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-            <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-        </head>
-        <body class="bg-light">
-            <div class="container mt-5">
-                <div class="row justify-content-center">
-                    <div class="col-lg-8">
-                        <div class="card shadow">
-                            <div class="card-body text-center p-5">
-                                <img src="/static/android-chrome-192x192.png" alt="moleXa Logo" style="width: 64px; height: 64px;" class="mb-3">
-                                <h2>📚 Interactive Documentation Available</h2>
-                                <p class="text-muted mb-4">
-                                    The integrated documentation page with live analytics is ready to be served!
-                                </p>
-                                <div class="alert alert-info" role="alert">
-                                    <i class="fas fa-lightbulb me-2"></i>
-                                    <strong>Setup Instructions:</strong><br>
-                                    Save the integrated HTML documentation as <code>docs.html</code> in your project root directory
-                                    to enable the full interactive documentation with live analytics.
-                                </div>
-                                <div class="d-grid gap-2 d-md-block">
-                                    <a href="/api/json/docs" class="btn btn-primary">
-                                        <i class="fas fa-code me-2"></i>
-                                        View JSON API Docs
-                                    </a>
-                                    <a href="/health" class="btn btn-outline-success">
-                                        <i class="fas fa-heartbeat me-2"></i>
-                                        Health Check
-                                    </a>
-                                    <a href="/analytics" class="btn btn-outline-info">
-                                        <i class="fas fa-chart-line me-2"></i>
-                                        Analytics Data
-                                    </a>
-                                </div>
-                                <hr class="my-4">
-                                <div class="text-start">
-                                    <h5>📊 Available Features:</h5>
-                                    <ul class="text-muted">
-                                        <li><strong>Live Analytics:</strong> <code>/analytics</code> - Real-time usage statistics</li>
-                                        <li><strong>SSE Stream:</strong> <code>/analytics/stream</code> - Live request feed</li>
-                                        <li><strong>Educational Data:</strong> Enhanced molecular data with context</li>
-                                        <li><strong>Safety Information:</strong> Comprehensive toxicity and handling data</li>
-                                        <li><strong>Interactive Documentation:</strong> Complete API reference with examples</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </body>
-        </html>
-      `);
-    }
-  } catch (error) {
-    console.error('❌ Error serving documentation:', error);
-    res.status(500).json({
-      error: 'Failed to serve documentation',
-      message: 'Please ensure docs.html exists in the project root directory',
-      fallback: 'Visit /api/json/docs for JSON documentation'
-    });
   }
 });
 
@@ -862,7 +481,6 @@ app.get('/api/pugview/compound/:cid/:section?', async (req, res) => {
 
     const data = await response.json();
     
-    // Extract educational content based on section
     let educationalContent = data;
     
     if (section === 'safety') {
@@ -947,7 +565,6 @@ app.get('/api/pugview/headings/:topic?', async (req, res) => {
   try {
     const { topic } = req.params;
     
-    // Pre-defined educational headings categorized by topic
     const educationalHeadings = {
       safety: [
         'Safety and Hazards',
@@ -1006,14 +623,13 @@ app.get('/api/pugview/headings/:topic?', async (req, res) => {
   }
 });
 
-// Main PubChem proxy endpoint (enhanced with educational context)
+// Main PubChem proxy endpoint
 app.get('/api/pubchem/*', async (req, res) => {
   try {
     const pubchemPath = req.params[0];
     const queryParams = new URLSearchParams(req.query).toString();
     const fullPath = queryParams ? `${pubchemPath}?${queryParams}` : pubchemPath;
     
-    // Check cache first
     const cacheKey = `pubchem:${fullPath}`;
     const cachedData = cache.get(cacheKey);
     
@@ -1024,23 +640,19 @@ app.get('/api/pubchem/*', async (req, res) => {
       return res.send(cachedData.data);
     }
 
-    // Build PubChem URL
     const pubchemUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/${fullPath}`;
     console.log(`🔍 Fetching from PubChem: ${pubchemUrl}`);
 
-    // Add delay to respect rate limits (200ms between requests)
     await new Promise(resolve => setTimeout(resolve, 200));
 
-    // Fetch from PubChem
     const response = await fetch(pubchemUrl, {
       headers: {
         'User-Agent': 'MoleculeStudio/1.0 (Educational Research Tool)',
         'Accept': '*/*'
       },
-      timeout: 30000 // 30 second timeout
+      timeout: 30000
     });
 
-    // Handle PubChem rate limiting
     if (response.status === 503) {
       return res.status(503).json({
         error: 'PubChem service temporarily unavailable',
@@ -1072,7 +684,6 @@ app.get('/api/pubchem/*', async (req, res) => {
       });
     }
 
-    // Get response data
     const contentType = response.headers.get('content-type') || 'application/json';
     let data;
 
@@ -1082,21 +693,17 @@ app.get('/api/pubchem/*', async (req, res) => {
       data = await response.text();
     }
 
-    // Enhanced response with educational context
     if (fullPath.includes('/property/') && data.PropertyTable) {
       data.educational_context = addEducationalContext(data.PropertyTable.Properties);
     }
 
-    // Cache the successful response
     cache.set(cacheKey, { data, contentType });
     console.log(`💾 Cached response for: ${fullPath}`);
 
-    // Set response headers
     res.set('Content-Type', contentType);
     res.set('X-Cache', 'MISS');
     res.set('X-PubChem-URL', pubchemUrl);
     
-    // Send response
     res.send(data);
 
   } catch (error) {
@@ -1126,9 +733,45 @@ app.get('/api/pubchem/*', async (req, res) => {
   }
 });
 
-// Helper functions for educational content
+// ===== HELPER FUNCTIONS =====
+
+async function fetchFromPubChem(path) {
+  const pubchemUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/${path}`;
+  console.log(`🌐 PubChem API call: ${pubchemUrl}`);
+  
+  await new Promise(resolve => setTimeout(resolve, 200));
+  
+  const response = await fetch(pubchemUrl, {
+    headers: {
+      'User-Agent': 'MoleculeStudio/1.0 (Educational Research Tool)',
+      'Accept': 'application/json'
+    },
+    timeout: 30000
+  });
+
+  if (!response.ok) {
+    let errorDetails = '';
+    try {
+      const errorText = await response.text();
+      console.error(`❌ PubChem error response: ${errorText}`);
+      errorDetails = errorText;
+    } catch (e) {
+      errorDetails = 'Unable to read error details';
+    }
+    
+    throw new Error(`PubChem API error: ${response.status} - ${errorDetails}`);
+  }
+
+  const contentType = response.headers.get('content-type') || 'application/json';
+  
+  if (contentType.includes('application/json')) {
+    return await response.json();
+  } else {
+    return await response.text();
+  }
+}
+
 function extractSafetyData(data) {
-  // Extract safety-related sections from PUG-View data
   return data;
 }
 
@@ -1146,7 +789,6 @@ function addEducationalContext(properties) {
   return properties.map(prop => {
     const context = {};
     
-    // Add educational explanations for key properties
     if (prop.MolecularWeight) {
       context.molecular_weight_info = "Molecular weight affects drug absorption, distribution, and elimination. Generally, drugs with MW 150-500 Da have optimal properties.";
     }
@@ -1167,79 +809,830 @@ function addEducationalContext(properties) {
   });
 }
 
-// Enhanced API documentation (JSON)
-app.get('/api/json/docs', (req, res) => {
-  res.json({
-    service: 'PubChem Educational Proxy API',
-    version: '2.1.0',
-    description: 'Enhanced proxy server for educational molecular data access with live analytics',
-    endpoints: {
-      health: 'GET /health - Service health check with analytics',
-      docs: 'GET /docs - Interactive documentation with live analytics',
-      analytics: 'GET /analytics - Analytics data (JSON)',
-      analytics_stream: 'GET /analytics/stream - Real-time SSE stream',
-      pubchem: 'GET /api/pubchem/* - Proxy PubChem REST API calls',
-      educational: 'GET /api/pubchem/compound/{id}/educational - Comprehensive educational data',
-      pugview: 'GET /api/pugview/compound/{cid}/{section} - Educational annotations',
-      autocomplete: 'GET /api/autocomplete/{query} - Chemical name suggestions',
-      api_docs: 'GET /api/json/docs - This JSON documentation'
-    },
-    examples: {
-      search_by_name: '/api/pubchem/compound/name/aspirin/cids/JSON',
-      get_properties: '/api/pubchem/compound/cid/2244/property/MolecularFormula,MolecularWeight/JSON',
-      get_sdf: '/api/pubchem/compound/cid/2244/SDF',
-      get_image: '/api/pubchem/compound/cid/2244/PNG',
-      educational_data: '/api/pubchem/compound/caffeine/educational?type=name',
-      safety_info: '/api/pugview/compound/2244/safety?heading=Toxicity',
-      autocomplete: '/api/autocomplete/caffe?limit=5'
-    },
-    new_features: [
-      'Live request analytics with educational impact metrics',
-      'Real-time usage statistics via Server-Sent Events',
-      'Educational impact tracking and visualization', 
-      'Integrated documentation with live analytics dashboard'
-    ],
-    analytics_features: {
-      real_time_tracking: 'Monitor API usage as it happens',
-      educational_categorization: 'Track how API serves educational purposes',
-      impact_metrics: 'Measure safety lookups, learning requests, etc.',
-      live_activity_feed: 'See recent API requests in real-time'
-    }
-  });
-});
+function generateMainDocsPage() {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>moleXa Educational API - Documentation & Analytics</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/static/android-chrome-192x192.png">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8f9fa; }
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4rem 0;
+        }
+        .navbar { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .feature-card {
+            transition: transform 0.2s;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .feature-card:hover { transform: translateY(-5px); }
+        .endpoint-badge { font-size: 0.8rem; }
+        .analytics-section {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            color: white;
+            padding: 3rem 0;
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        .code-example {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#home">
+                <img src="/static/android-chrome-192x192.png" alt="moleXa Logo" style="width: 40px; height: 40px; margin-right: 10px;">
+                moleXa API
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="#overview">Overview</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#endpoints">Endpoints</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#examples">Examples</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/api/dashboard" target="_blank">Live Dashboard</a></li>
+                    <li class="nav-item">
+                        <a href="https://github.com/bazarkua/molexa-api" target="_blank" class="btn btn-outline-primary btn-sm ms-2">
+                            <i class="fab fa-github me-1"></i>GitHub
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero-section" style="margin-top: 76px;">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="display-4 fw-bold mb-4">
+                        <img src="/static/android-chrome-192x192.png" alt="moleXa Logo" style="width: 64px; height: 64px; margin-right: 18px; vertical-align: middle;">
+                        moleXa Educational API
+                    </h1>
+                    <p class="lead mb-4">
+                        Enhanced proxy server providing comprehensive access to PubChem's molecular database 
+                        with educational context, safety information, and live analytics for chemistry education.
+                    </p>
+                    <div class="d-flex flex-wrap gap-3 mb-4">
+                        <span class="badge bg-light text-dark px-3 py-2">
+                            <i class="fas fa-database me-1"></i>PUG-REST API
+                        </span>
+                        <span class="badge bg-light text-dark px-3 py-2">
+                            <i class="fas fa-book me-1"></i>Educational Context
+                        </span>
+                        <span class="badge bg-light text-dark px-3 py-2">
+                            <i class="fas fa-shield-alt me-1"></i>Safety Data
+                        </span>
+                        <span class="badge bg-light text-dark px-3 py-2">
+                            <i class="fas fa-chart-line me-1"></i>Live Analytics
+                        </span>
+                    </div>
+                    <div class="d-flex gap-3">
+                        <a href="#endpoints" class="btn btn-light btn-lg">
+                            <i class="fas fa-rocket me-2"></i>Get Started
+                        </a>
+                        <a href="/api/dashboard" class="btn btn-outline-light btn-lg">
+                            <i class="fas fa-chart-line me-2"></i>Live Dashboard
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-4 text-center">
+                    <div class="bg-white bg-opacity-10 rounded-3 p-4">
+                        <h3>API Status</h3>
+                        <div class="d-flex justify-content-center align-items-center mb-3">
+                            <div class="bg-success rounded-circle me-2" style="width: 12px; height: 12px;"></div>
+                            <span class="badge bg-success fs-6 px-3 py-2">Online</span>
+                        </div>
+                        <small class="d-block">Base URL:</small>
+                        <code style="background: rgba(255,255,255,0.2); padding: 0.5rem; border-radius: 0.25rem;">
+                            https://molexa.org/api
+                        </code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Overview Section -->
+    <section id="overview" class="py-5">
+        <div class="container">
+            <h2 class="text-center mb-5">
+                <i class="fas fa-info-circle text-primary me-2"></i>
+                Why moleXa API?
+            </h2>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-3">
+                    <div class="card feature-card h-100 text-center">
+                        <div class="card-body">
+                            <i class="fas fa-graduation-cap text-primary" style="font-size: 2.5rem;"></i>
+                            <h5 class="mt-3">Educational Focus</h5>
+                            <p class="text-muted">Designed specifically for chemistry education with contextual explanations.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="card feature-card h-100 text-center">
+                        <div class="card-body">
+                            <i class="fas fa-shield-alt text-success" style="font-size: 2.5rem;"></i>
+                            <h5 class="mt-3">Safety First</h5>
+                            <p class="text-muted">Comprehensive toxicity data and safety warnings for lab use.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="card feature-card h-100 text-center">
+                        <div class="card-body">
+                            <i class="fas fa-pills text-info" style="font-size: 2.5rem;"></i>
+                            <h5 class="mt-3">Drug Information</h5>
+                            <p class="text-muted">Detailed pharmacology data and therapeutic information.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="card feature-card h-100 text-center">
+                        <div class="card-body">
+                            <i class="fas fa-rocket text-warning" style="font-size: 2.5rem;"></i>
+                            <h5 class="mt-3">High Performance</h5>
+                            <p class="text-muted">Optimized caching and rate limiting for reliable educational use.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Live Analytics Section -->
+    <section class="analytics-section">
+        <div class="container">
+            <div class="row text-center mb-4">
+                <div class="col-12">
+                    <h2 class="display-5 fw-bold mb-3">
+                        <i class="fas fa-chart-line me-3"></i>
+                        Live Educational Impact
+                    </h2>
+                    <p class="lead">Real-time insights into how educators worldwide use this API</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <div class="card stat-card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-globe fa-2x mb-2"></i>
+                            <h3 id="totalRequests">Loading...</h3>
+                            <small>Total Requests</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card stat-card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-graduation-cap fa-2x mb-2"></i>
+                            <h3 id="educationalRequests">0</h3>
+                            <small>Educational Queries</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card stat-card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-shield-alt fa-2x mb-2"></i>
+                            <h3 id="safetyRequests">0</h3>
+                            <small>Safety Lookups</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card stat-card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-clock fa-2x mb-2"></i>
+                            <h3 id="requestsThisHour">0</h3>
+                            <small>This Hour</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mt-4">
+                <a href="/api/dashboard" class="btn btn-light btn-lg">
+                    <i class="fas fa-external-link-alt me-2"></i>
+                    View Full Analytics Dashboard
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Key Endpoints Section -->
+    <section id="endpoints" class="py-5">
+        <div class="container">
+            <h2 class="text-center mb-5">
+                <i class="fas fa-code text-primary me-2"></i>
+                Key API Endpoints
+            </h2>
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <span class="badge bg-success endpoint-badge me-2">GET</span>
+                                Educational Overview
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="code-example mb-3">
+                                GET /api/pubchem/compound/{name}/educational?type=name
+                            </div>
+                            <p>Get comprehensive educational data for any compound including molecular properties, safety information, and learning context.</p>
+                            <a href="#examples" class="btn btn-outline-primary btn-sm">View Examples</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">
+                                <span class="badge bg-success endpoint-badge me-2">GET</span>
+                                Safety Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="code-example mb-3">
+                                GET /api/pugview/compound/{cid}/safety
+                            </div>
+                            <p>Access comprehensive safety data, toxicity information, and laboratory handling procedures for educational purposes.</p>
+                            <a href="#examples" class="btn btn-outline-warning btn-sm">View Examples</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <span class="badge bg-success endpoint-badge me-2">GET</span>
+                                Live Analytics
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="code-example mb-3">
+                                GET /api/analytics/stream
+                            </div>
+                            <p>Real-time usage statistics and educational impact metrics via Server-Sent Events for monitoring API usage.</p>
+                            <a href="/api/dashboard" class="btn btn-outline-info btn-sm">Live Dashboard</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">
+                                <span class="badge bg-primary endpoint-badge me-2">GET</span>
+                                PubChem Proxy
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="code-example mb-3">
+                                GET /api/pubchem/*
+                            </div>
+                            <p>Direct proxy to PubChem's PUG-REST API with enhanced caching, error handling, and educational context.</p>
+                            <a href="/api/json/docs" class="btn btn-outline-success btn-sm">Full API Docs</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Examples Section -->
+    <section id="examples" class="py-5 bg-light">
+        <div class="container">
+            <h2 class="text-center mb-5">
+                <i class="fas fa-code-branch text-primary me-2"></i>
+                Usage Examples
+            </h2>
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-graduation-cap me-2 text-primary"></i>
+                                Get Educational Data for Aspirin
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="code-example">
+// Fetch comprehensive educational data
+const response = await fetch('https://molexa.org/api/pubchem/compound/aspirin/educational?type=name');
+const data = await response.json();
+
+console.log('Formula:', data.basic_properties.MolecularFormula);
+console.log('Educational Context:', data.educational_context);
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-shield-alt me-2 text-warning"></i>
+                                Get Safety Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="code-example">
+// Fetch safety and toxicity data
+const response = await fetch('https://molexa.org/api/pugview/compound/2244/safety?heading=Toxicity');
+const safety = await response.json();
+
+console.log('Safety Data:', safety);
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-search me-2 text-success"></i>
+                                Chemical Name Autocomplete
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="code-example">
+// Get autocomplete suggestions
+const response = await fetch('https://molexa.org/api/autocomplete/caffe?limit=5');
+const suggestions = await response.json();
+
+console.log('Suggestions:', suggestions.suggestions);
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-line me-2 text-info"></i>
+                                Live Analytics Stream
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="code-example">
+// Connect to live analytics
+const eventSource = new EventSource('https://molexa.org/api/analytics/stream');
+
+eventSource.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    console.log('Real-time update:', data);
+};
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8">
+                    <h5>
+                        <img src="/static/android-chrome-192x192.png" alt="moleXa Logo" style="width: 40px; height: 40px; margin-right: 10px;">
+                        moleXa Educational API
+                    </h5>
+                    <p class="text-light">
+                        Empowering chemistry education through enhanced access to molecular data with 
+                        safety information, educational context, and comprehensive analytics.
+                    </p>
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <h6>Quick Links</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="/api/dashboard" class="text-light">Live Dashboard</a></li>
+                        <li><a href="/api/json/docs" class="text-light">JSON API Docs</a></li>
+                        <li><a href="https://github.com/bazarkua/molexa-api" class="text-light">GitHub Repository</a></li>
+                        <li><a href="https://pubchem.ncbi.nlm.nih.gov" class="text-light">PubChem Database</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="text-light">
+            <div class="text-center">
+                <p class="mb-0">&copy; 2025 Adilbek Bazarkulov. MIT License. Built for educational purposes with ❤️</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Load analytics data
+        fetch('/api/analytics')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('totalRequests').textContent = data.totalRequests;
+                document.getElementById('requestsThisHour').textContent = data.requestsThisHour || 0;
+                
+                // Calculate educational metrics
+                const educationalCount = (data.recentRequests || []).filter(r => 
+                    r.type && (r.type.toLowerCase().includes('educational') || r.endpoint.includes('educational'))).length;
+                const safetyCount = (data.recentRequests || []).filter(r => 
+                    r.type && (r.type.toLowerCase().includes('safety') || r.endpoint.includes('safety'))).length;
+                
+                document.getElementById('educationalRequests').textContent = educationalCount;
+                document.getElementById('safetyRequests').textContent = safetyCount;
+            })
+            .catch(error => {
+                console.error('Error loading analytics:', error);
+                document.getElementById('totalRequests').textContent = '0';
+            });
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+  `;
+}
+
+function generateDashboardPage() {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>moleXa API - Live Analytics Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8f9fa; }
+        .navbar { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .stat-card { 
+            transition: transform 0.2s; 
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .stat-card:hover { transform: translateY(-2px); }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .recent-request {
+            border-left: 3px solid #007bff;
+            background: white;
+            margin-bottom: 0.5rem;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            transition: all 0.3s ease;
+        }
+        .recent-request.new {
+            border-left-color: #28a745;
+            box-shadow: 0 0 15px rgba(40, 167, 69, 0.3);
+        }
+        .activity-feed {
+            height: 400px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+        .badge-request-type { font-size: 0.7rem; padding: 0.25rem 0.5rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/api/docs">
+                <i class="fas fa-chart-line me-2"></i>moleXa API Analytics
+            </a>
+            <div class="d-flex">
+                <span class="badge bg-light text-dark me-2" id="status">
+                    <i class="fas fa-circle text-success me-1"></i>Live
+                </span>
+                <a href="/api/docs" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-book me-1"></i>API Docs
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-globe fa-2x text-primary mb-2"></i>
+                        <h3 class="mb-0" id="totalRequests">0</h3>
+                        <p class="text-muted mb-0">Total Requests</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-clock fa-2x text-success mb-2"></i>
+                        <h3 class="mb-0" id="requestsThisHour">0</h3>
+                        <p class="text-muted mb-0">This Hour</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-server fa-2x text-info mb-2"></i>
+                        <h3 class="mb-0" id="uptime">0m</h3>
+                        <p class="text-muted mb-0">Uptime</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-users fa-2x text-warning mb-2"></i>
+                        <h3 class="mb-0" id="activeConnections">1</h3>
+                        <p class="text-muted mb-0">Live Viewers</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-activity text-primary me-2"></i>
+                            Live Request Activity
+                            <span class="badge bg-primary ms-2" id="activityCount">0</span>
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="activity-feed" id="activityFeed">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-hourglass-half fa-2x mb-3"></i>
+                                <p>Connecting to live feed...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie text-success me-2"></i>
+                            Popular Endpoints
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="topEndpoints">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-chart-bar fa-2x mb-3"></i>
+                                <p>Loading data...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-graduation-cap text-info me-2"></i>
+                            Educational Impact
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <h4 class="text-primary" id="safetyRequests">0</h4>
+                                    <small class="text-muted">Safety Lookups</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <h4 class="text-success" id="educationalRequests">0</h4>
+                                    <small class="text-muted">Learning Resources</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <i class="fas fa-heart text-danger"></i>
+                            <small class="text-muted">Empowering chemistry education</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let totalRequests = 0;
+        let recentRequests = [];
+        
+        const eventSource = new EventSource('/api/analytics/stream');
+        
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'initial') {
+                updateAnalytics(data.analytics);
+                updateRecentRequests(data.recentRequests);
+            } else if (data.type === 'new_request') {
+                addNewRequest(data.data);
+                updateAnalytics(data.analytics);
+            }
+        };
+        
+        eventSource.onerror = function(event) {
+            document.getElementById('status').innerHTML = 
+                '<i class="fas fa-circle text-danger me-1"></i>Disconnected';
+        };
+        
+        function updateAnalytics(analytics) {
+            document.getElementById('totalRequests').textContent = analytics.totalRequests;
+            document.getElementById('requestsThisHour').textContent = analytics.requestsThisHour;
+            document.getElementById('uptime').textContent = analytics.uptimeMinutes + 'm';
+            
+            updateTopEndpoints(analytics.topEndpoints);
+            updateEducationalImpact();
+        }
+        
+        function updateTopEndpoints(topEndpoints) {
+            const container = document.getElementById('topEndpoints');
+            if (!topEndpoints || topEndpoints.length === 0) return;
+            
+            container.innerHTML = topEndpoints.map(([endpoint, count]) => \`
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-truncate">\${endpoint}</span>
+                    <span class="badge bg-primary">\${count}</span>
+                </div>
+            \`).join('');
+        }
+        
+        function addNewRequest(request) {
+            recentRequests.unshift(request);
+            if (recentRequests.length > 20) {
+                recentRequests = recentRequests.slice(0, 20);
+            }
+            
+            const feed = document.getElementById('activityFeed');
+            const requestElement = createRequestElement(request, true);
+            
+            if (feed.children.length === 0 || feed.children[0].classList.contains('text-center')) {
+                feed.innerHTML = '';
+            }
+            
+            feed.insertBefore(requestElement, feed.firstChild);
+            requestElement.classList.add('pulse');
+            setTimeout(() => requestElement.classList.remove('pulse'), 2000);
+            
+            document.getElementById('activityCount').textContent = recentRequests.length;
+            
+            const children = Array.from(feed.children);
+            if (children.length > 20) {
+                children.slice(20).forEach(child => child.remove());
+            }
+        }
+        
+        function updateRecentRequests(requests) {
+            recentRequests = requests;
+            const feed = document.getElementById('activityFeed');
+            
+            if (requests.length === 0) return;
+            
+            feed.innerHTML = requests.map(request => 
+                createRequestElement(request).outerHTML
+            ).join('');
+            
+            document.getElementById('activityCount').textContent = requests.length;
+            updateEducationalImpact();
+        }
+        
+        function createRequestElement(request, isNew = false) {
+            const div = document.createElement('div');
+            div.className = \`recent-request \${isNew ? 'new' : ''}\`;
+            
+            const timeAgo = new Date(request.timestamp).toLocaleTimeString();
+            const typeColor = getTypeColor(request.type);
+            
+            div.innerHTML = \`
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-1">
+                            <span class="badge \${typeColor} badge-request-type me-2">\${request.type}</span>
+                            <small class="text-muted">\${timeAgo}</small>
+                        </div>
+                        <div class="small text-truncate" style="max-width: 300px;">
+                            <span class="badge bg-secondary me-1">\${request.method}</span>
+                            \${request.endpoint}
+                        </div>
+                    </div>
+                    <i class="fas fa-globe text-muted"></i>
+                </div>
+            \`;
+            
+            return div;
+        }
+        
+        function getTypeColor(type) {
+            const colors = {
+                'Educational Overview': 'bg-primary',
+                'Safety Data': 'bg-warning text-dark',
+                'Pharmacology': 'bg-info',
+                'Properties': 'bg-secondary',
+                'Autocomplete': 'bg-success',
+                'Educational Annotations': 'bg-purple',
+                'Name Search': 'bg-primary',
+                'Structure Image': 'bg-info'
+            };
+            return colors[type] || 'bg-light text-dark';
+        }
+        
+        function updateEducationalImpact() {
+            const safetyCount = recentRequests.filter(r => 
+                r.type.includes('Safety') || r.endpoint.includes('safety')).length;
+            const educationalCount = recentRequests.filter(r => 
+                r.type.includes('Educational') || r.endpoint.includes('educational')).length;
+            
+            document.getElementById('safetyRequests').textContent = safetyCount;
+            document.getElementById('educationalRequests').textContent = educationalCount;
+        }
+        
+        // Load initial data
+        fetch('/api/analytics')
+            .then(response => response.json())
+            .then(data => {
+                updateAnalytics(data);
+                updateRecentRequests(data.recentRequests);
+            })
+            .catch(error => console.error('Error loading analytics:', error));
+    </script>
+</body>
+</html>
+  `;
+}
 
 // 404 handler
 app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Not found',
-    message: `Route ${req.originalUrl} not found`,
-    availableRoutes: ['/health', '/dashboard', 'api/docs', '/analytics', '/api/json/docs', '/api/pubchem/*']
-  });
+  // If it's an API route that doesn't exist
+  if (req.originalUrl.startsWith('/api/')) {
+    res.status(404).json({
+      error: 'API endpoint not found',
+      message: `Route ${req.originalUrl} not found`,
+      available_routes: {
+        documentation: '/api/docs',
+        health: '/api/health',
+        analytics: '/api/analytics',
+        pubchem_proxy: '/api/pubchem/*',
+        educational: '/api/pubchem/compound/{id}/educational',
+        safety: '/api/pugview/compound/{cid}/safety',
+        autocomplete: '/api/autocomplete/{query}',
+        json_docs: '/api/json/docs'
+      },
+      base_url: 'https://molexa.org/api'
+    });
+  } else {
+    // For non-API routes, redirect to API documentation
+    res.redirect('/api/docs');
+  }
 });
-
-// Start server
-// app.listen(port, () => {
-//   console.log(`
-// 🚀 Enhanced PubChem Educational Proxy Started!
-// 📍 Server running on: http://localhost:${port}
-// 🏥 Health check: http://localhost:${port}/health
-// 📊 Live Dashboard: http://localhost:${port}/dashboard
-// 📈 Analytics API: http://localhost:${port}/analytics
-// 📚 JSON API docs: http://localhost:${port}/api/json/docs
-
-// 🎓 Educational Features:
-//    • Comprehensive molecular properties with explanations
-//    • Safety and toxicity information
-//    • Pharmacology and drug data  
-//    • Live usage analytics and monitoring
-
-// 🧪 Try the API:
-//    • /api/pubchem/compound/aspirin/educational?type=name
-//    • /api/pubchem/compound/cid/2244/property/MolecularFormula/JSON
-
-// 📊 Monitor usage at: /dashboard
-//   `);
-// });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

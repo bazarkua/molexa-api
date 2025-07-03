@@ -1,11 +1,11 @@
 {
   "name": "molexa-backend",
-  "version": "2.0.0",
-  "description": "Enhanced backend proxy server for PubChem API access with educational features - solves CORS issues for moleXa and provides comprehensive molecular education data",
-  "main": "server.js",
+  "version": "2.1.0",
+  "description": "Enhanced backend proxy server for PubChem API access with educational features - production deployment for molexa.org/api",
+  "main": "api/index.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node api/index.js",
+    "dev": "nodemon api/index.js",
     "test": "node test-server.js",
     "test:educational": "node test-server.js",
     "validate": "node validate-setup.js",
@@ -29,7 +29,11 @@
     "molecular-properties",
     "drug-data",
     "toxicity",
-    "chemical-education"
+    "chemical-education",
+    "vercel",
+    "serverless",
+    "analytics",
+    "real-time"
   ],
   "author": "Adilbek Bazarkulov",
   "license": "MIT",
@@ -45,7 +49,7 @@
     "nodemon": "^3.0.1"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.0.0"
   },
   "repository": {
     "type": "git",
@@ -54,7 +58,7 @@
   "bugs": {
     "url": "https://github.com/bazarkua/molexa-api/issues"
   },
-  "homepage": "https://github.com/bazarkua/molexa-api#readme",
+  "homepage": "https://molexa.org/api/docs",
   "funding": {
     "type": "individual",
     "url": "https://github.com/sponsors/bazarkua"
@@ -63,7 +67,8 @@
     "port": 3001,
     "cache_ttl": 86400,
     "autocomplete_cache_ttl": 3600,
-    "rate_limit": 5
+    "rate_limit": 5,
+    "base_url": "https://molexa.org/api"
   },
   "educational_features": {
     "pug_rest": "Enhanced molecular properties with educational context",
@@ -71,18 +76,45 @@
     "autocomplete": "Chemical name suggestions for improved search experience",
     "safety_data": "Comprehensive toxicity and hazard information",
     "drug_data": "Pharmacological mechanisms and therapeutic information",
-    "structure_visualization": "2D and 3D molecular structure support"
+    "structure_visualization": "2D and 3D molecular structure support",
+    "live_analytics": "Real-time usage monitoring and educational impact metrics"
   },
   "api_endpoints": {
-    "health": "/health",
-    "docs_interactive": "/docs",
-    "docs_json": "/api/docs",
-    "educational_overview": "/api/pubchem/compound/{id}/educational",
-    "safety_annotations": "/api/pugview/compound/{cid}/safety",
-    "pharmacology_data": "/api/pugview/compound/{cid}/pharmacology",
-    "chemical_properties": "/api/pugview/compound/{cid}/properties",
-    "autocomplete": "/api/autocomplete/{query}",
-    "headings": "/api/pugview/headings/{topic}",
-    "pubchem_proxy": "/api/pubchem/*"
+    "base_url": "https://molexa.org/api",
+    "documentation": {
+      "interactive": "/api/docs",
+      "json": "/api/json/docs",
+      "dashboard": "/api/dashboard"
+    },
+    "core": {
+      "health": "/api/health",
+      "analytics": "/api/analytics",
+      "analytics_stream": "/api/analytics/stream"
+    },
+    "educational": {
+      "overview": "/api/pubchem/compound/{id}/educational",
+      "safety": "/api/pugview/compound/{cid}/safety",
+      "pharmacology": "/api/pugview/compound/{cid}/pharmacology",
+      "properties": "/api/pugview/compound/{cid}/properties"
+    },
+    "search": {
+      "autocomplete": "/api/autocomplete/{query}",
+      "headings": "/api/pugview/headings/{topic}",
+      "pubchem_proxy": "/api/pubchem/*"
+    }
+  },
+  "deployment": {
+    "platform": "vercel",
+    "domain": "molexa.org",
+    "api_base": "https://molexa.org/api",
+    "frontend_base": "https://molexa.org",
+    "status": "production"
+  },
+  "vercel": {
+    "functions": {
+      "api/index.js": {
+        "maxDuration": 30
+      }
+    }
   }
 }

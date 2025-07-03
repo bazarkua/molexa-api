@@ -1,12 +1,23 @@
 // test-server.js
-// Updated test script for Enhanced PubChem Educational Proxy API
-// Tests the 12 most important endpoints including new analytics features
+// Updated test script for moleXa Educational Proxy API
+// Tests production deployment at molexa.org/api with new URL structure
 
 const fetch = require('node-fetch');
 
-const BASE_URL = 'http://localhost:3001';
+// Configuration for different environments
+const environments = {
+  local: 'http://localhost:3001',
+  production: 'https://molexa.org'
+};
 
-async function testEndpoint(name, url, expectError = false, timeout = 10000) {
+// Default to production for testing deployed version
+const BASE_URL = process.env.TEST_ENV === 'local' ? environments.local : environments.production;
+const IS_PRODUCTION = BASE_URL.includes('molexa.org');
+
+console.log(`🌐 Testing environment: ${IS_PRODUCTION ? 'PRODUCTION' : 'LOCAL'}`);
+console.log(`📍 Base URL: ${BASE_URL}`);
+
+async function testEndpoint(name, url, expectError = false, timeout = 15000) {
   console.log(`\n🧪 Testing: ${name}`);
   console.log(`📍 URL: ${url}`);
   
@@ -17,7 +28,8 @@ async function testEndpoint(name, url, expectError = false, timeout = 10000) {
     const response = await fetch(url, { 
       signal: controller.signal,
       headers: {
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'User-Agent': 'moleXa-API-Test/1.0'
       }
     });
     
@@ -38,24 +50,27 @@ async function testEndpoint(name, url, expectError = false, timeout = 10000) {
       const data = await response.json();
       
       // Log key information based on endpoint type
-      if (data.IdentifierList && data.IdentifierList.CID) {
+      if (data.service && data.version) {
+        console.log(`🎯 Service: ${data.service} v${data.version}`);
+        if (data.base_url) console.log(`🔗 Base URL: ${data.base_url}`);
+      } else if (data.IdentifierList && data.IdentifierList.CID) {
         console.log(`🎯 Found ${data.IdentifierList.CID.length} compound(s): [${data.IdentifierList.CID.slice(0, 3).join(', ')}...]`);
       } else if (data.PropertyTable && data.PropertyTable.Properties) {
         const props = data.PropertyTable.Properties[0];
         console.log(`🎯 Properties: Formula=${props.MolecularFormula}, MW=${props.MolecularWeight}`);
       } else if (data.totalRequests !== undefined) {
-        console.log(`📊 Analytics: ${data.totalRequests} total requests, ${data.recentRequestsCount} recent`);
+        console.log(`📊 Analytics: ${data.totalRequests} total requests, ${data.recentRequestsCount || 0} recent`);
       } else if (data.cid && data.basic_properties) {
         console.log(`🎓 Educational Data: CID=${data.cid}, Formula=${data.basic_properties.MolecularFormula}`);
-      } else if (data.service) {
-        console.log(`📚 Service: ${data.service} v${data.version}`);
       } else if (data.query && data.suggestions) {
         console.log(`🔍 Autocomplete: ${data.suggestions.length} suggestions for "${data.query}"`);
+      } else if (data.error) {
+        console.log(`⚠️  Error response: ${data.error} - ${data.message}`);
       } else {
         console.log(`📊 Response preview:`, JSON.stringify(data, null, 2).substring(0, 150) + '...');
       }
     } else if (contentType && contentType.includes('text/html')) {
-      console.log(`📄 HTML page served successfully`);
+      console.log(`📄 HTML page served successfully (${response.headers.get('content-length') || 'unknown'} bytes)`);
     } else {
       const text = await response.text();
       console.log(`📝 Text response (${text.length} chars):`, text.substring(0, 100) + '...');
@@ -72,131 +87,158 @@ async function testEndpoint(name, url, expectError = false, timeout = 10000) {
   }
 }
 
-async function runCriticalTests() {
-  console.log('🚀 Starting Critical Tests for Enhanced Educational API...\n');
-  console.log('Testing 12 most important endpoints for educational functionality\n');
+async function runProductionTests() {
+  console.log('🚀 Starting Production Tests for moleXa Educational API...\n');
+  console.log('Testing optimized /api/* endpoint structure for molexa.org deployment\n');
   
-  const criticalTests = [
-    // 1. Server Health & Status
+  const productionTests = [
+    // 1. API Root - should return API information
     {
-      name: '1. Health Check with Analytics',
-      url: `${BASE_URL}/health`,
-      description: 'Verify server is running and analytics are working'
+      name: '1. API Root Information',
+      url: `${BASE_URL}/`,
+      description: 'Verify API root returns service information'
     },
     
-    // 2. API Documentation
+    // 2. Main API Documentation Homepage 
     {
-      name: '2. JSON API Documentation',
+      name: '2. Main API Documentation Homepage',
       url: `${BASE_URL}/api/docs`,
-      description: 'Check comprehensive API documentation'
+      description: 'Primary entry point - interactive documentation'
     },
     
-    // 3. Live Analytics (New Feature)
+    // 3. JSON API Documentation
     {
-      name: '3. Live Analytics Data',
-      url: `${BASE_URL}/analytics`,
-      description: 'Test real-time usage analytics'
+      name: '3. JSON API Documentation',
+      url: `${BASE_URL}/api/json/docs`,
+      description: 'Machine-readable API specification'
     },
     
-    // 4. Core PubChem Functionality - Name Search
+    // 4. Health Check with Analytics
     {
-      name: '4. Aspirin Name Search',
+      name: '4. API Health Check',
+      url: `${BASE_URL}/api/health`,
+      description: 'Service health status and feature list'
+    },
+    
+    // 5. Live Analytics Data
+    {
+      name: '5. Live Analytics Data',
+      url: `${BASE_URL}/api/analytics`,
+      description: 'Real-time usage statistics and metrics'
+    },
+    
+    // 6. Core PubChem Functionality - Name Search
+    {
+      name: '6. Aspirin Name Search (PubChem Proxy)',
       url: `${BASE_URL}/api/pubchem/compound/name/aspirin/cids/JSON`,
-      description: 'Test basic compound search by name'
+      description: 'Test core compound search functionality',
+      timeout: 20000
     },
     
-    // 5. Core PubChem Functionality - Formula Search  
+    // 7. Enhanced Educational Endpoint
     {
-      name: '5. Water Formula Search (H2O)',
-      url: `${BASE_URL}/api/pubchem/compound/formula/H2O/cids/JSON`,
-      description: 'Test compound search by molecular formula'
-    },
-    
-    // 6. Enhanced Educational Endpoint (New Feature)
-    {
-      name: '6. Educational Data for Caffeine',
+      name: '7. Educational Data for Caffeine',
       url: `${BASE_URL}/api/pubchem/compound/caffeine/educational?type=name`,
-      description: 'Test comprehensive educational molecular data'
+      description: 'Comprehensive educational molecular data',
+      timeout: 25000
     },
     
-    // 7. Property Retrieval with Educational Context
+    // 8. Property Retrieval with Educational Context
     {
-      name: '7. Aspirin Properties',
+      name: '8. Aspirin Molecular Properties',
       url: `${BASE_URL}/api/pubchem/compound/cid/2244/property/MolecularFormula,MolecularWeight,XLogP,TPSA/JSON`,
-      description: 'Test molecular property retrieval'
+      description: 'Enhanced molecular property retrieval',
+      timeout: 20000
     },
     
-    // 8. Autocomplete Feature (New)
+    // 9. Autocomplete Feature
     {
-      name: '8. Chemical Name Autocomplete',
+      name: '9. Chemical Name Autocomplete',
       url: `${BASE_URL}/api/autocomplete/caffe?limit=5`,
-      description: 'Test intelligent chemical name suggestions'
+      description: 'Intelligent chemical name suggestions',
+      timeout: 15000
     },
     
-    // 9. Structure Visualization
+    // 10. Structure Visualization
     {
-      name: '9. Aspirin Structure Image',
+      name: '10. Aspirin Structure Image',
       url: `${BASE_URL}/api/pubchem/compound/cid/2244/PNG`,
-      description: 'Test molecular structure image generation'
+      description: 'Molecular structure image generation',
+      timeout: 25000
     },
     
-    // 10. Safety Data (Educational Priority)
+    // 11. Safety Data (Educational Priority)
     {
-      name: '10. Safety Information for Aspirin',
+      name: '11. Safety Information for Aspirin',
       url: `${BASE_URL}/api/pugview/compound/2244/safety?heading=Toxicity`,
-      description: 'Test safety and hazard information retrieval',
-      timeout: 15000 // PUG-View can be slower
+      description: 'Safety and hazard information for education',
+      timeout: 30000 // PUG-View can be slower
     },
     
-    // 11. Error Handling
+    // 12. Live Analytics Dashboard
     {
-      name: '11. Invalid Compound Error Handling',
+      name: '12. Live Analytics Dashboard',
+      url: `${BASE_URL}/api/dashboard`,
+      description: 'Interactive real-time analytics dashboard'
+    },
+    
+    // 13. Educational Headings
+    {
+      name: '13. Available Educational Headings',
+      url: `${BASE_URL}/api/pugview/headings/safety`,
+      description: 'Available educational content categories'
+    },
+    
+    // 14. Error Handling Test
+    {
+      name: '14. Invalid Compound Error Handling',
       url: `${BASE_URL}/api/pubchem/compound/name/nonexistentcompound999/cids/JSON`,
-      description: 'Test proper error handling for invalid requests',
-      expectError: true
+      description: 'Proper error handling for invalid requests',
+      expectError: true,
+      timeout: 20000
     },
     
-    // 12. Interactive Documentation (New)
+    // 15. Non-existent API endpoint
     {
-      name: '12. Interactive Documentation Page',
-      url: `${BASE_URL}/docs`,
-      description: 'Test integrated documentation with analytics'
+      name: '15. Non-existent API Endpoint',
+      url: `${BASE_URL}/api/nonexistent`,
+      description: 'API 404 handling',
+      expectError: true
     }
   ];
   
   let passed = 0;
-  let total = criticalTests.length;
+  let total = productionTests.length;
   let results = [];
   
-  for (const test of criticalTests) {
+  console.log(`📊 Running ${total} production tests...\n`);
+  
+  for (const test of productionTests) {
     const success = await testEndpoint(
       test.name, 
       test.url, 
       test.expectError || false,
-      test.timeout || 10000
+      test.timeout || 15000
     );
     
     results.push({
       name: test.name,
       description: test.description,
       success: success,
-      category: test.name.includes('Analytics') ? 'Analytics' :
-               test.name.includes('Educational') ? 'Educational' :
-               test.name.includes('Safety') ? 'Safety' :
-               test.name.includes('Error') ? 'Error Handling' :
-               test.name.includes('Documentation') ? 'Documentation' : 'Core API'
+      category: categorizeTest(test.name)
     });
     
     if (success) passed++;
     
-    // Respectful delay between requests
-    await new Promise(resolve => setTimeout(resolve, 250));
+    // Respectful delay between requests (especially important for production)
+    await new Promise(resolve => setTimeout(resolve, IS_PRODUCTION ? 500 : 250));
   }
   
   // Results Summary
-  console.log(`\n📊 CRITICAL TESTS SUMMARY`);
-  console.log(`${'='.repeat(50)}`);
+  console.log(`\n📊 PRODUCTION TESTS SUMMARY`);
+  console.log(`${'='.repeat(60)}`);
   console.log(`Overall Result: ${passed}/${total} tests passed (${Math.round(passed/total*100)}%)`);
+  console.log(`Environment: ${IS_PRODUCTION ? 'PRODUCTION (molexa.org)' : 'LOCAL DEVELOPMENT'}`);
   
   // Group results by category
   const categories = {};
@@ -226,62 +268,93 @@ async function runCriticalTests() {
   
   // Educational Impact Assessment
   const educationalFeatures = results.filter(r => 
-    r.category === 'Educational' || r.category === 'Safety' || r.category === 'Analytics'
+    r.category === 'Educational Features' || r.category === 'Safety & Analytics'
   );
   const educationalSuccess = educationalFeatures.filter(f => f.success).length;
   
   console.log(`\n🎓 Educational Features: ${educationalSuccess}/${educationalFeatures.length} working`);
   
   if (passed === total) {
-    console.log('\n🎉 EXCELLENT! All critical tests passed!');
-    console.log('✨ Your enhanced educational API is fully functional:');
+    console.log('\n🎉 EXCELLENT! All production tests passed!');
+    console.log('✨ Your moleXa API is fully operational at molexa.org:');
     console.log('   • ✅ Core PubChem proxy functionality');
-    console.log('   • ✅ Live analytics and monitoring');
     console.log('   • ✅ Enhanced educational endpoints');
+    console.log('   • ✅ Live analytics and monitoring');
     console.log('   • ✅ Safety and toxicity information');
     console.log('   • ✅ Interactive documentation');
     console.log('   • ✅ Error handling and robustness');
-  } else if (passed >= 9) {
-    console.log('\n✅ GOOD! Most critical functionality is working.');
+  } else if (passed >= 12) {
+    console.log('\n✅ GOOD! Most functionality is working on production.');
     console.log('Minor issues detected - check failed tests above.');
-  } else if (passed >= 6) {
-    console.log('\n⚠️  PARTIAL! Core functionality works but enhancements may have issues.');
-    console.log('Review failed tests and check server logs.');
+  } else if (passed >= 8) {
+    console.log('\n⚠️  PARTIAL! Core functionality works but some features need attention.');
+    console.log('Review failed tests and check production logs.');
   } else {
     console.log('\n❌ CRITICAL ISSUES! Multiple core functions are failing.');
-    console.log('Check server status and configuration.');
+    console.log('Check production deployment and configuration.');
   }
   
-  console.log(`\n🔗 Quick Links:`);
-  console.log(`   • Interactive Docs: http://localhost:3001/docs`);
-  console.log(`   • Live Analytics: http://localhost:3001/analytics`);
-  console.log(`   • Health Check: http://localhost:3001/health`);
-  console.log(`   • API Reference: http://localhost:3001/api/docs`);
+  console.log(`\n🔗 Production Links:`);
+  console.log(`   • API Documentation: https://molexa.org/api/docs`);
+  console.log(`   • Live Analytics: https://molexa.org/api/dashboard`);
+  console.log(`   • Health Check: https://molexa.org/api/health`);
+  console.log(`   • JSON API Docs: https://molexa.org/api/json/docs`);
+  
+  if (IS_PRODUCTION) {
+    console.log(`\n🌐 Production Testing Complete!`);
+    console.log(`📊 Ready for frontend integration with base URL: https://molexa.org/api`);
+  }
   
   return passed === total;
 }
 
-// Enhanced server connectivity check
+function categorizeTest(testName) {
+  if (testName.includes('Documentation') || testName.includes('API Root')) {
+    return 'Documentation & Info';
+  } else if (testName.includes('Educational') || testName.includes('Safety') || testName.includes('Analytics')) {
+    return 'Educational Features';
+  } else if (testName.includes('PubChem') || testName.includes('Properties') || testName.includes('Structure')) {
+    return 'Core API Functions';
+  } else if (testName.includes('Error') || testName.includes('Non-existent')) {
+    return 'Error Handling';
+  } else if (testName.includes('Autocomplete') || testName.includes('Search')) {
+    return 'Search Features';
+  } else {
+    return 'Safety & Analytics';
+  }
+}
+
+// Enhanced connectivity check
 async function checkServerAndRun() {
-  console.log('🔍 Checking Enhanced Educational API Server...');
+  console.log(`🔍 Checking moleXa API Server at ${BASE_URL}...`);
   
   try {
-    const response = await fetch(`${BASE_URL}/health`, { 
-      timeout: 5000,
-      headers: { 'Accept': 'application/json' }
+    const healthUrl = `${BASE_URL}${IS_PRODUCTION ? '/api/health' : '/api/health'}`;
+    const response = await fetch(healthUrl, { 
+      timeout: 10000,
+      headers: { 
+        'Accept': 'application/json',
+        'User-Agent': 'moleXa-API-Test/1.0'
+      }
     });
     
     if (response.ok) {
       const healthData = await response.json();
       console.log('✅ Server is running!');
-      console.log(`📊 Service: ${healthData.service}`);
-      console.log(`📈 Total Requests: ${healthData.analytics?.totalRequests || 0}`);
+      console.log(`📊 Service: ${healthData.service || 'moleXa API'}`);
+      console.log(`📈 Version: ${healthData.version || 'Unknown'}`);
+      console.log(`🌐 Base URL: ${healthData.base_url || BASE_URL}`);
+      if (healthData.analytics) {
+        console.log(`📊 Total Requests: ${healthData.analytics.totalRequests || 0}`);
+        console.log(`⏱️  Uptime: ${healthData.analytics.uptimeMinutes || 0} minutes`);
+      }
       console.log(`🎓 Features: ${healthData.features?.length || 0} available\n`);
       
-      const success = await runCriticalTests();
+      const success = await runProductionTests();
       
       if (success) {
-        console.log('\n🚀 Your educational API is ready for production use!');
+        console.log('\n🚀 Your moleXa Educational API is ready for production use!');
+        console.log('🎯 Frontend can now integrate using https://molexa.org/api as base URL');
       }
       
     } else {
@@ -291,13 +364,44 @@ async function checkServerAndRun() {
     console.log('❌ Cannot connect to server!');
     console.log(`   Error: ${error.message}`);
     console.log('\n🔧 Troubleshooting steps:');
-    console.log('   1. Start server: npm start');
-    console.log('   2. Check port 3001 is available');
-    console.log('   3. Verify server logs for errors');
-    console.log('   4. Ensure all dependencies are installed');
-    console.log('   5. Check firewall/network settings');
+    
+    if (IS_PRODUCTION) {
+      console.log('   1. Check if molexa.org is accessible');
+      console.log('   2. Verify Vercel deployment is running');
+      console.log('   3. Check Vercel function logs');
+      console.log('   4. Verify DNS and domain configuration');
+      console.log('   5. Test with: curl https://molexa.org/api/health');
+    } else {
+      console.log('   1. Start local server: npm start');
+      console.log('   2. Check port 3001 is available');
+      console.log('   3. Verify server logs for errors');
+      console.log('   4. Ensure all dependencies are installed');
+    }
   }
 }
 
+// Handle command line arguments
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+  console.log(`
+moleXa API Test Suite
+
+Usage:
+  npm test                    # Test production deployment (molexa.org)
+  TEST_ENV=local npm test     # Test local development server
+  node test-server.js         # Same as npm test
+  
+Environment Variables:
+  TEST_ENV=local              # Test local server at localhost:3001
+  TEST_ENV=production         # Test production at molexa.org (default)
+
+Examples:
+  npm test                    # Test https://molexa.org/api
+  TEST_ENV=local npm test     # Test http://localhost:3001/api
+  `);
+  process.exit(0);
+}
+
 // Run the tests
+console.log('🧪 moleXa API Production Test Suite');
+console.log('====================================\n');
 checkServerAndRun();
