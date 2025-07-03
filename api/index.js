@@ -44,7 +44,7 @@ try {
 app.use(cors({
   origin: [
     'https://molexa.org',
-    "https://molexa.vercel.app",   // Vercel preview/live
+    'https://molexa.vercel.app',   // Vercel preview/live
     'https://www.molexa.org',
     'http://localhost:3000', 
     'http://localhost:5173', 
@@ -105,20 +105,20 @@ app.use('/api/pubchem', limiter);
 app.use('/api/pugview', limiter);
 app.use('/api/autocomplete', limiter);
 
-// Root route - serve index.html
-app.get('/', (req, res) => {
-  try {
-    const indexPath = path.join(__dirname, '..', 'index.html');
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      res.redirect('/api/docs');
-    }
-  } catch (error) {
-    console.error('Error serving root:', error);
-    res.redirect('/api/docs');
-  }
-});
+// // Root route - serve index.html
+// app.get('/', (req, res) => {
+//   try {
+//     const indexPath = path.join(__dirname, '..', 'index.html');
+//     if (fs.existsSync(indexPath)) {
+//       res.sendFile(indexPath);
+//     } else {
+//       res.redirect('/api/docs');
+//     }
+//   } catch (error) {
+//     console.error('Error serving root:', error);
+//     res.redirect('/api/docs');
+//   }
+// });
 
 // 📊 UPDATED: Analytics endpoints with database support
 app.get('/api/analytics', async (req, res) => {
