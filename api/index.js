@@ -43,9 +43,12 @@ app.use(cors({
 
 app.use(express.json());
 
-// ⚡ CRITICAL: Serve static files FIRST
-app.use('/static', express.static(path.join(__dirname, '..', 'public')));
+// Also make sure you have proper static file serving:
 app.use('/public', express.static(path.join(__dirname, '..', 'public')));
+app.use('/static', express.static(path.join(__dirname, '..', 'public')));
+
+// ✅ This should be BEFORE your route handlers
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // 📊 Analytics middleware - Track all API requests
 app.use('/api', (req, res, next) => {
@@ -240,7 +243,7 @@ app.get('/health', (req, res) => {
 // API root
 app.get('/api', (req, res) => {
   try {
-    const indexPath = path.join(__dirname, '..', 'index.html');
+    const indexPath = path.join(__dirname, '..', 'public', 'index.html');
     if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath);
     } else {
@@ -255,7 +258,7 @@ app.get('/api', (req, res) => {
 // API Documentation - serve index.html or fallback to generated HTML
 app.get('/api/docs', (req, res) => {
   try {
-    const indexPath = path.join(__dirname, '..', 'index.html');
+    const indexPath = path.join(__dirname, '..', 'public', 'index.html');
     if (fs.existsSync(indexPath)) {
       console.log('📄 Serving index.html for /api/docs');
       res.sendFile(indexPath);
