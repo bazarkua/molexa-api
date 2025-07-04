@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>moleXa Educational API - Documentation & Analytics</title>
+    <title>moleXa Educational API - Documentation, Analytics & Citations</title>
     
     <!-- Favicons and Web App Manifest -->
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
@@ -14,408 +14,830 @@
     <meta name="msapplication-TileColor" content="#007bff">
     <meta name="theme-color" content="#ffffff">
     
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Vercel Font (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
     <style>
-        /* Hero section with more space from navbar */
-        .hero-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 6rem 0 4rem 0;
-            margin-top: 76px;
+        /* Modern Vercel-inspired Design System */
+        :root {
+            --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            --max-width: 1200px;
+            --border-radius: 8px;
+            --border-radius-lg: 12px;
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+            --spacing-3xl: 64px;
+            
+            /* Colors - Vercel inspired */
+            --gray-50: #fafafa;
+            --gray-100: #f4f4f5;
+            --gray-200: #e4e4e7;
+            --gray-300: #d4d4d8;
+            --gray-400: #a1a1aa;
+            --gray-500: #71717a;
+            --gray-600: #52525b;
+            --gray-700: #3f3f46;
+            --gray-800: #27272a;
+            --gray-900: #18181b;
+            
+            --blue-50: #eff6ff;
+            --blue-100: #dbeafe;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --blue-700: #1d4ed8;
+            --green-500: #10b981;
+            --green-600: #059669;
+            --amber-100: #fef3c7;
+            --amber-500: #f59e0b;
+            --amber-800: #92400e;
+            --red-500: #ef4444;
+            --purple-100: #f3e8ff;
+            --purple-500: #8b5cf6;
+            --purple-800: #5b21b6;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
         }
-        
-        /* Navbar styling for light theme */
-        .navbar-light {
-            background-color: #f8f9fa !important;
-            border-bottom: 1px solid #e9ecef;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        
-        .navbar-light .navbar-brand {
-            color: #2c3e50 !important;
+
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 80px;
+        }
+
+        body {
+            font-family: var(--font-inter);
+            line-height: 1.6;
+            color: var(--gray-900);
+            background-color: var(--gray-50);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Container and Layout */
+        .container {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+        }
+
+        .container-narrow {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+        }
+
+        /* Navigation */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--gray-200);
+            z-index: 1000;
+        }
+
+        .navbar-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
             font-weight: 600;
-            font-size: 1.25rem;
+            font-size: 18px;
+            color: var(--gray-900);
+            text-decoration: none;
         }
-        
-        .navbar-light .navbar-brand:hover {
-            color: #007bff !important;
+
+        .navbar-brand img {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
         }
-        
-        /* Enhanced nav link styling for light theme */
-        .navbar-light .navbar-nav .nav-link {
-            color: #495057 !important;
+
+        .navbar-nav {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            list-style: none;
+        }
+
+        .nav-link {
+            padding: var(--spacing-sm) var(--spacing-md);
+            color: var(--gray-600);
+            text-decoration: none;
             font-weight: 500;
-            padding: 0.75rem 1rem;
-            border-radius: 6px;
-            margin: 0 0.25rem;
-            transition: all 0.3s ease;
+            font-size: 14px;
+            border-radius: var(--border-radius);
+            transition: all 0.2s ease;
         }
-        
-        .navbar-light .navbar-nav .nav-link:hover {
-            color: #007bff !important;
-            background-color: rgba(0, 123, 255, 0.1);
-            transform: translateY(-1px);
+
+        .nav-link:hover {
+            color: var(--gray-900);
+            background-color: var(--gray-100);
         }
-        
-        .navbar-light .navbar-nav .nav-link.active {
-            color: #007bff !important;
-            background-color: rgba(0, 123, 255, 0.15);
-            font-weight: 600;
+
+        .nav-link.active {
+            color: var(--blue-600);
+            background-color: rgba(59, 130, 246, 0.1);
         }
-        
-        /* GitHub star button styling */
-        .github-star-btn {
-            border: 1.5px solid #24292e !important;
-            color: #24292e !important;
-            font-weight: 600;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            transition: all 0.3s ease;
-            text-decoration: none !important;
+
+        .btn {
             display: inline-flex;
             align-items: center;
-            font-size: 0.875rem;
-        }
-        
-        .github-star-btn:hover {
-            background-color: #24292e !important;
-            color: white !important;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(36, 41, 46, 0.2);
-        }
-        
-        .code-block {
-            background-color: #f8f9fa;
-            border-left: 4px solid #007bff;
-            padding: 1rem;
-            border-radius: 0.25rem;
-        }
-        .endpoint-card {
-            border-left: 4px solid #28a745;
-            transition: transform 0.2s;
-        }
-        .endpoint-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .method-badge {
-            font-size: 0.8rem;
-            padding: 0.25rem 0.5rem;
-        }
-        .nav-pills .nav-link.active {
-            background-color: #007bff;
-        }
-        .citation-box {
-            background-color: #e7f3ff;
-            border-left: 4px solid #007bff;
-            padding: 1.5rem;
-            border-radius: 0.25rem;
-        }
-        .feature-icon {
-            font-size: 2rem;
-            color: #007bff;
-        }
-        .footer {
-            background-color: #343a40;
-            color: white;
-            padding: 2rem 0;
-        }
-        .property-example {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 0.25rem;
-            padding: 1rem;
-            margin: 0.5rem 0;
-        }
-        
-        /* Enhanced link styling for better readability */
-        a {
-            color: #0066cc;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-family: inherit;
+            font-weight: 500;
+            font-size: 14px;
+            line-height: 1.5;
+            border: 1px solid transparent;
+            border-radius: var(--border-radius);
             text-decoration: none;
-            transition: color 0.2s ease;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
         }
-        a:hover {
-            color: #004499;
-            text-decoration: underline;
+
+        .btn-primary {
+            background-color: var(--blue-600);
+            color: white;
         }
-        
-        /* Smooth scrolling offset for fixed navbar */
-        html {
-            scroll-padding-top: 90px;
+
+        .btn-primary:hover {
+            background-color: var(--blue-700);
+            color: white;
         }
-        
-        /* Additional spacing for sections */
-        section {
-            scroll-margin-top: 90px;
+
+        .btn-outline {
+            background-color: transparent;
+            color: var(--gray-700);
+            border-color: var(--gray-300);
         }
-        
-        /* ===== ANALYTICS STYLING ===== */
-        .analytics-section {
+
+        .btn-outline:hover {
+            background-color: var(--gray-100);
+            border-color: var(--gray-400);
+            color: var(--gray-900);
+        }
+
+        .btn-github {
+            background-color: #24292e;
+            color: white;
+            border-color: #24292e;
+        }
+
+        .btn-github:hover {
+            background-color: #1a1e22;
+            color: white;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: calc(64px + var(--spacing-3xl)) 0 var(--spacing-3xl) 0;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 4rem 0;
+            text-align: center;
         }
-        
+
+        .hero h1 {
+            font-size: 48px;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .hero p {
+            font-size: 20px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .badge-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.95);
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            font-weight: 500;
+            backdrop-filter: blur(8px);
+        }
+
+        /* Section Styles */
+        .section {
+            padding: var(--spacing-3xl) 0;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .section-title {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .section-subtitle {
+            font-size: 18px;
+            color: var(--gray-600);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--gray-300);
+        }
+
+        .card-header {
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--gray-200);
+            background: var(--gray-50);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin: 0;
+        }
+
+        .card-body {
+            padding: var(--spacing-lg);
+        }
+
+        /* Grid System */
+        .grid {
+            display: grid;
+            gap: var(--spacing-lg);
+        }
+
+        .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+        .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+        @media (max-width: 768px) {
+            .grid-cols-2, .grid-cols-3, .grid-cols-4 {
+                grid-template-columns: repeat(1, minmax(0, 1fr));
+            }
+        }
+
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .grid-cols-4 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        /* Stats Cards */
         .stat-card {
-            transition: transform 0.2s;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
+            text-align: center;
+            padding: var(--spacing-xl);
         }
-        
-        .stat-card:hover {
-            transform: translateY(-2px);
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto var(--spacing-md);
+            background: var(--gray-100);
+            border-radius: var(--border-radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--blue-600);
+            font-size: 20px;
         }
-        
-        .pulse {
-            animation: pulse 2s infinite;
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: var(--spacing-xs);
         }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--gray-600);
+            font-weight: 500;
         }
-        
-        .recent-request {
-            border-left: 3px solid #007bff;
-            background: white;
-            margin-bottom: 0.5rem;
-            padding: 0.75rem;
-            border-radius: 0.375rem;
-            transition: all 0.3s ease;
-        }
-        
-        .recent-request.new {
-            border-left-color: #28a745;
-            box-shadow: 0 0 15px rgba(40, 167, 69, 0.3);
-        }
-        
+
+        /* Activity Feed */
         .activity-feed {
-            height: 350px;
+            max-height: 400px;
             overflow-y: auto;
-            background: #f8f9fa;
-            border-radius: 0.5rem;
-            padding: 1rem;
+            padding: var(--spacing-md);
+            background: var(--gray-50);
+            border-radius: var(--border-radius);
         }
-        
-        .badge-request-type {
-            font-size: 0.7rem;
-            padding: 0.25rem 0.5rem;
-        }
-        
-        .analytics-card {
+
+        .activity-item {
+            padding: var(--spacing-md);
             background: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--border-radius);
+            margin-bottom: var(--spacing-sm);
+            transition: all 0.2s ease;
         }
-        
+
+        .activity-item:hover {
+            border-color: var(--gray-300);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .activity-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .activity-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .activity-type {
+            padding: 2px var(--spacing-sm);
+            background: var(--blue-100);
+            color: var(--blue-800);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: var(--gray-500);
+        }
+
+        .activity-endpoint {
+            font-size: 13px;
+            color: var(--gray-700);
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+        }
+
+        .activity-method {
+            display: inline-block;
+            padding: 1px 6px;
+            background: var(--gray-200);
+            color: var(--gray-700);
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-right: var(--spacing-sm);
+        }
+
+        /* Status Indicator */
         .status-indicator {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: var(--spacing-sm);
         }
-        
+
         .status-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background-color: #28a745;
+            background-color: var(--green-500);
             animation: pulse 2s infinite;
         }
-        
-        /* Navbar responsive improvements */
-        @media (max-width: 991.98px) {
-            .hero-section {
-                margin-top: 76px;
-                padding: 4rem 0 3rem 0;
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Loading States */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-2xl);
+            color: var(--gray-500);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--gray-300);
+            border-top: 2px solid var(--blue-600);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: var(--spacing-sm);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--gray-900);
+            color: var(--gray-100);
+            padding: var(--spacing-md);
+            border-radius: var(--border-radius);
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: var(--spacing-md) 0;
+        }
+
+        .code-inline {
+            background: var(--gray-100);
+            color: var(--gray-800);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        /* Citation boxes */
+        .citation-box {
+            background: var(--blue-50);
+            border: 1px solid var(--blue-200);
+            border-radius: var(--border-radius-lg);
+            padding: var(--spacing-xl);
+            margin: var(--spacing-lg) 0;
+        }
+
+        .citation-content {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-md);
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            margin: var(--spacing-md) 0;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--gray-900);
+            color: var(--gray-100);
+            padding: var(--spacing-3xl) 0 var(--spacing-lg) 0;
+        }
+
+        .footer h3 {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .footer h4 {
+            color: var(--gray-200);
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .footer p, .footer li {
+            color: var(--gray-300);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .footer a {
+            color: var(--blue-400);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer a:hover {
+            color: var(--blue-300);
+            text-decoration: underline;
+        }
+
+        .footer ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .footer ul li {
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .footer-divider {
+            height: 1px;
+            background: var(--gray-700);
+            margin: var(--spacing-xl) 0;
+        }
+
+        .footer-bottom {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid var(--gray-700);
+            text-align: center;
+        }
+
+        /* Type-specific colors */
+        .type-educational { background: var(--blue-100); color: var(--blue-800); }
+        .type-safety { background: var(--amber-100); color: var(--amber-800); }
+        .type-properties { background: var(--green-100); color: var(--green-800); }
+        .type-search { background: var(--purple-100); color: var(--purple-800); }
+        .type-image { background: var(--gray-200); color: var(--gray-700); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container, .container-narrow {
+                padding: 0 var(--spacing-md);
             }
             
-            .navbar-collapse {
-                margin-top: 0.5rem;
-                padding: 1rem 0;
-                background-color: #f8f9fa;
-                border-radius: 8px;
-                border: 1px solid #e9ecef;
+            .hero h1 {
+                font-size: 36px;
             }
             
-            .navbar-light .navbar-nav .nav-link {
-                margin: 0.25rem 0;
+            .hero p {
+                font-size: 18px;
             }
             
-            .github-star-btn {
-                margin-top: 0.5rem;
-                justify-content: center;
-                width: 100%;
+            .section-title {
+                font-size: 28px;
+            }
+            
+            .navbar-nav {
+                display: none;
+            }
+            
+            .hero-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .footer-bottom {
+                flex-direction: column;
+                text-align: center;
             }
         }
-        
-        @media (max-width: 576px) {
-            .github-star-btn span {
-                display: none !important;
-            }
-            
-            .hero-section .btn {
-                display: block;
-                width: 100%;
-                margin: 0.5rem 0 !important;
-            }
+
+        /* API Guide specific styles */
+        .endpoint-card {
+            border-left: 4px solid var(--green-500);
         }
+
+        .method-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--green-500);
+            color: white;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: var(--spacing-sm);
+        }
+
+        .method-badge.post { background: var(--blue-500); }
+        .method-badge.put { background: var(--amber-500); }
+        .method-badge.delete { background: var(--red-500); }
     </style>
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top shadow-sm">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="#home">
-                <img src="/public/android-chrome-192x192.png" alt="moleXa Logo" style="width: 48px; height: 48px; margin-right: 10px;">
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="#home" class="navbar-brand">
+                <img src="/public/android-chrome-192x192.png" alt="moleXa Logo">
                 moleXa API
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="#overview">Overview</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#analytics">Live Analytics</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#endpoints">Endpoints</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#examples">Examples</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#citations">Citations</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#license">License</a></li>
-                    <li class="nav-item ms-2">
-                        <a href="https://github.com/bazarkua/molexa-api" target="_blank" class="btn btn-outline-dark btn-sm github-star-btn">
-                            <i class="fab fa-github me-1"></i>
-                            <span class="d-none d-md-inline">Star on GitHub</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
+            <ul class="navbar-nav">
+                <li><a href="#overview" class="nav-link">Overview</a></li>
+                <li><a href="#analytics" class="nav-link">Analytics</a></li>
+                <li><a href="#api-guide" class="nav-link">API Guide</a></li>
+                <li><a href="#citations" class="nav-link">Citations</a></li>
+                <li><a href="https://github.com/bazarkua/molexa-api" target="_blank" class="btn btn-github">
+                    <i class="fab fa-github"></i>
+                    Star on GitHub
+                </a></li>
+            </ul>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <section id="home" class="hero-section">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-8">
-                    <h1 class="display-4 fw-bold mb-4">
-                        <img src="/public/android-chrome-192x192.png" alt="moleXa Logo" style="width: 64px; height: 64px; margin-right: 18px; vertical-align: middle;">
-                        moleXa Educational API
-                    </h1>
-                    <p class="lead mb-4">
-                        A comprehensive proxy server providing enhanced access to PubChem's molecular data 
-                        with educational context, safety information, and rich annotations for chemistry education.
-                    </p>
-                    <div class="d-flex flex-wrap gap-3">
-                        <span class="badge bg-light text-dark px-3 py-2">
-                            <i class="fas fa-database me-1"></i>PUG-REST API
-                        </span>
-                        <span class="badge bg-light text-dark px-3 py-2">
-                            <i class="fas fa-book me-1"></i>PUG-View Annotations
-                        </span>
-                        <span class="badge bg-light text-dark px-3 py-2">
-                            <i class="fas fa-search me-1"></i>Autocomplete
-                        </span>
-                        <span class="badge bg-light text-dark px-3 py-2">
-                            <i class="fas fa-shield-alt me-1"></i>Safety Data
-                        </span>
-                        <span class="badge bg-light text-dark px-3 py-2">
-                            <i class="fas fa-chart-line me-1"></i>Live Analytics
-                        </span>
-                    </div>
-                </div>
-                <div class="col-lg-4 text-center">
-                    <div class="bg-white bg-opacity-10 rounded-3 p-4">
-                        <h3>API Status</h3>
-                        <div class="d-flex justify-content-center align-items-center">
-                            <div class="status-indicator">
-                                <div class="status-dot"></div>
-                                <span class="badge bg-success fs-6 px-3 py-2">Online</span>
-                            </div>
-                        </div>
-                        <small class="d-block mt-2">Base URL: <br/> <code>https://molexa-api.vercel.app/api</code></small>
-                        <div class="mt-3">
-                            <small class="d-block">Total Requests:</small>
-                            <strong class="h4" id="heroTotalRequests">Loading...</strong>
-                        </div>
-                    </div>
-                </div>
+    <section id="home" class="hero">
+        <div class="container-narrow">
+            <h1>moleXa Educational API</h1>
+            <p>Enhanced proxy server for PubChem data with educational context, safety information, and live analytics. Built for chemistry education worldwide.</p>
+            
+            <div class="hero-actions">
+                <a href="https://molexa.org" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-external-link-alt"></i>
+                    Try Live Demo
+                </a>
+                <a href="https://github.com/bazarkua/molexa" target="_blank" class="btn btn-outline" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); color: white;">
+                    <i class="fab fa-github"></i>
+                    Frontend GitHub
+                </a>
+                <a href="#api-guide" class="btn btn-outline" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); color: white;">
+                    <i class="fas fa-book"></i>
+                    API Documentation
+                </a>
+            </div>
+            
+            <div class="badge-list">
+                <span class="badge">
+                    <i class="fas fa-database"></i>
+                    PUG-REST API
+                </span>
+                <span class="badge">
+                    <i class="fas fa-graduation-cap"></i>
+                    Educational Context
+                </span>
+                <span class="badge">
+                    <i class="fas fa-shield-alt"></i>
+                    Safety Data
+                </span>
+                <span class="badge">
+                    <i class="fas fa-chart-line"></i>
+                    Live Analytics
+                </span>
+                <span class="badge">
+                    <i class="fas fa-search"></i>
+                    Smart Autocomplete
+                </span>
+            </div>
+
+            <div class="status-indicator" style="justify-content: center; color: rgba(255, 255, 255, 0.9);">
+                <div class="status-dot"></div>
+                <span>API Online • <span id="heroTotalRequests">Loading...</span> Total Requests</span>
             </div>
         </div>
     </section>
 
     <!-- Overview Section -->
-    <section id="overview" class="py-5">
+    <section id="overview" class="section">
         <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <h2 class="text-center mb-5">
-                        <i class="fas fa-info-circle text-primary me-2"></i>
-                        What This API Actually Does
-                    </h2>
+            <div class="section-header">
+                <h2 class="section-title">API Overview</h2>
+                <p class="section-subtitle">
+                    Comprehensive molecular data access with educational enhancements for chemistry learning
+                </p>
+            </div>
+
+            <div class="grid grid-cols-3">
+                <div class="card">
+                    <div class="card-body" style="text-align: center;">
+                        <div class="stat-icon" style="background: var(--blue-100); color: var(--blue-600);">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <h3 style="font-size: 20px; margin-bottom: var(--spacing-sm);">Educational Focus</h3>
+                        <p style="color: var(--gray-600);">Designed specifically for chemistry education with contextual explanations and safety information.</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body" style="text-align: center;">
+                        <div class="stat-icon" style="background: var(--green-100); color: var(--green-600);">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h3 style="font-size: 20px; margin-bottom: var(--spacing-sm);">Safety First</h3>
+                        <p style="color: var(--gray-600);">Comprehensive toxicity data, handling procedures, and safety warnings for laboratory use.</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body" style="text-align: center;">
+                        <div class="stat-icon" style="background: var(--purple-100); color: var(--purple-500);">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <h3 style="font-size: 20px; margin-bottom: var(--spacing-sm);">High Performance</h3>
+                        <p style="color: var(--gray-600);">Optimized caching, rate limiting, and error handling for reliable educational applications.</p>
+                    </div>
                 </div>
             </div>
-            <div class="row g-4">
-                <div class="col-md-6 col-lg-3">
-                    <div class="card h-100 text-center border-0 shadow-sm">
-                        <div class="card-body">
-                            <i class="fas fa-database feature-icon mb-3"></i>
-                            <h5>PubChem Proxy</h5>
-                            <p class="text-muted">Direct proxy to PubChem REST API with enhanced error handling, caching, and rate limiting for educational use.</p>
-                        </div>
+        </div>
+    </section>
+
+    <!-- Analytics Section -->
+    <section id="analytics" class="section" style="background: white;">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Live Educational Impact</h2>
+                <p class="section-subtitle">
+                    Real-time analytics showing how educators and students worldwide use this API for chemistry learning
+                </p>
+            </div>
+
+            <!-- Metrics Grid -->
+            <div class="grid grid-cols-4" style="margin-bottom: var(--spacing-2xl);">
+                <div class="card stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-globe"></i>
                     </div>
+                    <div class="stat-number" id="totalRequests">0</div>
+                    <div class="stat-label">Total Requests</div>
                 </div>
-                <div class="col-md-6 col-lg-3">
-                    <div class="card h-100 text-center border-0 shadow-sm">
-                        <div class="card-body">
-                            <i class="fas fa-search feature-icon mb-3"></i>
-                            <h5>Smart Search</h5>
-                            <p class="text-muted">Chemical name autocomplete and enhanced formula search using PubChem's FastFormula endpoint.</p>
-                        </div>
+                
+                <div class="card stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-graduation-cap"></i>
                     </div>
+                    <div class="stat-number" id="educationalCount">0</div>
+                    <div class="stat-label">Educational Queries</div>
                 </div>
-                <div class="col-md-6 col-lg-3">
-                    <div class="card h-100 text-center border-0 shadow-sm">
-                        <div class="card-body">
-                            <i class="fas fa-graduation-cap feature-icon mb-3"></i>
-                            <h5>Educational Context</h5>
-                            <p class="text-muted">Combines molecular data with educational explanations, safety information, and synonyms from PubChem.</p>
-                        </div>
+                
+                <div class="card stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-shield-alt"></i>
                     </div>
+                    <div class="stat-number" id="safetyCount">0</div>
+                    <div class="stat-label">Safety Lookups</div>
                 </div>
-                <div class="col-md-6 col-lg-3">
-                    <div class="card h-100 text-center border-0 shadow-sm">
-                        <div class="card-body">
-                            <i class="fas fa-chart-line feature-icon mb-3"></i>
-                            <h5>Usage Analytics</h5>
-                            <p class="text-muted">Real-time tracking of API usage with selective analytics, database storage, and live streaming dashboard.</p>
-                        </div>
+                
+                <div class="card stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-search"></i>
                     </div>
+                    <div class="stat-number" id="searchCount">0</div>
+                    <div class="stat-label">Search Queries</div>
                 </div>
             </div>
 
-            <!-- Key Features -->
-            <div class="row mt-5">
-                <div class="col-12">
-                    <h3 class="mb-4">Actual Features & Capabilities</h3>
-                    <div class="row">
-                        <div class="col-lg-6">
-                            <ul class="list-unstyled">
-                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Enhanced PubChem data access with educational context</li>
-                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Chemical name autocomplete (8 suggestions max)</li>
-                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Rate limiting (5 requests/second) for responsible API usage</li>
-                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Response caching (24 hours) for improved performance</li>
-                            </ul>
+            <!-- Activity Feed -->
+            <div class="grid grid-cols-1">
+                <div class="card">
+                    <div class="card-header">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <h3 class="card-title">
+                                <i class="fas fa-activity" style="margin-right: var(--spacing-sm);"></i>
+                                Live Request Activity
+                            </h3>
+                            <div class="status-indicator">
+                                <div class="status-dot"></div>
+                                <span style="font-size: 14px; color: var(--gray-600);">Live</span>
+                            </div>
                         </div>
-                        <div class="col-lg-6">
-                            <ul class="list-unstyled">
-                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Real-time usage analytics with database persistence</li>
-                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>CORS-enabled for cross-origin educational applications</li>
-                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Selective analytics (only tracks actual API usage)</li>
-                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Server-Sent Events for live dashboard updates</li>
-                            </ul>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <div class="activity-feed" id="activityFeed">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                                Connecting to live feed...
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -423,311 +845,229 @@
         </div>
     </section>
 
-
-    <!-- Live Analytics Section -->
-    <section id="analytics" class="analytics-section">
+    <!-- API Guide Section -->
+    <section id="api-guide" class="section">
         <div class="container">
-            <div class="row">
-                <div class="col-12 text-center mb-5">
-                    <h2 class="display-5 fw-bold mb-3">
-                        <i class="fas fa-chart-line me-3"></i>
-                        Live Educational Impact
-                    </h2>
-                    <p class="lead">
-                        Watch how educators and students around the world use this API for chemistry learning
+            <div class="section-header">
+                <h2 class="section-title">API Usage Guide</h2>
+                <p class="section-subtitle">
+                    Learn how to integrate the moleXa Educational API into your chemistry applications
+                </p>
+            </div>
+
+            <!-- Base URL and Authentication -->
+            <div class="card" style="margin-bottom: var(--spacing-lg);">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-link" style="margin-right: var(--spacing-sm);"></i>
+                        Base URL & Setup
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <p style="margin-bottom: var(--spacing-md);">All API requests should be made to:</p>
+                    <div class="code-block">https://molexa-api.vercel.app/api</div>
+                    <p style="margin-top: var(--spacing-md); color: var(--gray-600);">
+                        <strong>Note:</strong> No authentication required. API is rate-limited to 5 requests per second for fair usage.
                     </p>
                 </div>
             </div>
 
-            <!-- Stats Row -->
-            <div class="row mb-4">
-                <div class="col-md-3 mb-3">
-                    <div class="card stat-card border-0 text-center h-100">
-                        <div class="card-body">
-                            <i class="fas fa-globe fa-2x mb-3"></i>
-                            <h3 class="mb-0" id="totalRequests">0</h3>
-                            <p class="mb-0 opacity-75">Total Requests</p>
+            <!-- Core Endpoints -->
+            <div class="grid grid-cols-1" style="gap: var(--spacing-lg);">
+                <!-- Educational Overview -->
+                <div class="card endpoint-card">
+                    <div class="card-header">
+                        <h4 class="card-title">
+                            <span class="method-badge">GET</span>
+                            Educational Overview
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="code-block">GET /api/pubchem/compound/{identifier}/educational?type={cid|name|fastformula}</div>
+                        <p style="margin: var(--spacing-md) 0; color: var(--gray-700);">
+                            Get comprehensive educational data for any compound including properties, synonyms, structure URLs, and educational context.
+                        </p>
+                        <strong>Example:</strong>
+                        <div class="code-block">curl "https://molexa-api.vercel.app/api/pubchem/compound/aspirin/educational?type=name"</div>
+                    </div>
+                </div>
+
+                <!-- Chemical Autocomplete -->
+                <div class="card endpoint-card">
+                    <div class="card-header">
+                        <h4 class="card-title">
+                            <span class="method-badge">GET</span>
+                            Chemical Autocomplete
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="code-block">GET /api/autocomplete/{query}?limit={number}</div>
+                        <p style="margin: var(--spacing-md) 0; color: var(--gray-700);">
+                            Get intelligent suggestions for chemical names as users type.
+                        </p>
+                        <strong>Example:</strong>
+                        <div class="code-block">curl "https://molexa-api.vercel.app/api/autocomplete/caffe?limit=5"</div>
+                    </div>
+                </div>
+
+                <!-- Safety Information -->
+                <div class="card endpoint-card">
+                    <div class="card-header">
+                        <h4 class="card-title">
+                            <span class="method-badge">GET</span>
+                            Safety Information
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="code-block">GET /api/pugview/compound/{cid}/safety?heading={heading}</div>
+                        <p style="margin: var(--spacing-md) 0; color: var(--gray-700);">
+                            Access comprehensive safety and toxicity information for educational lab safety.
+                        </p>
+                        <strong>Example:</strong>
+                        <div class="code-block">curl "https://molexa-api.vercel.app/api/pugview/compound/2244/safety?heading=Toxicity"</div>
+                    </div>
+                </div>
+
+                <!-- PubChem Proxy -->
+                <div class="card endpoint-card">
+                    <div class="card-header">
+                        <h4 class="card-title">
+                            <span class="method-badge">GET</span>
+                            PubChem Proxy
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="code-block">GET /api/pubchem/*</div>
+                        <p style="margin: var(--spacing-md) 0; color: var(--gray-700);">
+                            Direct proxy to PubChem PUG-REST API with CORS enabled and educational enhancements.
+                        </p>
+                        <strong>Examples:</strong>
+                        <div class="code-block">
+# Get molecular properties
+curl "https://molexa-api.vercel.app/api/pubchem/compound/name/aspirin/cids/JSON"
+
+# Get structure image
+curl "https://molexa-api.vercel.app/api/pubchem/compound/cid/2244/PNG"
+
+# Get molecular properties
+curl "https://molexa-api.vercel.app/api/pubchem/compound/cid/2244/property/MolecularFormula,MolecularWeight/JSON"
                         </div>
                     </div>
                 </div>
-                
             </div>
 
-            <div class="row">
-                <!-- Recent Activity -->
-                <div class="col-lg-8 mb-4">
-                    <div class="card analytics-card border-0">
-                        <div class="card-header bg-white border-0 pb-0">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-activity text-primary me-2"></i>
-                                    Live Request Activity
-                                </h5>
-                                <div class="status-indicator">
-                                    <div class="status-dot"></div>
-                                    <small class="text-muted">Live</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body pt-2">
-                            <div class="activity-feed" id="activityFeed">
-                                <div class="text-center text-muted">
-                                    <i class="fas fa-hourglass-half fa-2x mb-3"></i>
-                                    <p>Connecting to live feed...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Usage Insights -->
-                <div class="col-lg-4 mb-4">
-                    <div class="card analytics-card border-0 h-100">
-                        <div class="card-header bg-white border-0">
-                            <h5 class="mb-0">
-                                <i class="fas fa-chart-pie text-success me-2"></i>
-                                Popular Endpoints
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div id="topEndpoints">
-                                <div class="text-center text-muted">
-                                    <i class="fas fa-chart-bar fa-2x mb-3"></i>
-                                    <p>Loading usage data...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Educational Impact Showcase -->
             
         </div>
     </section>
 
-    <!-- Endpoints Section -->
-    <section id="endpoints" class="py-5 bg-light">
-        <div class="container">
-            <h2 class="text-center mb-5">
-                <i class="fas fa-code text-primary me-2"></i>
-                API Endpoints
-            </h2>
-
-            <!-- Endpoint Categories -->
-            <ul class="nav nav-pills justify-content-center mb-4" id="endpointTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="basic-tab" data-bs-toggle="pill" data-bs-target="#basic" type="button">
-                        <i class="fas fa-home me-1"></i>Basic
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="educational-tab" data-bs-toggle="pill" data-bs-target="#educational" type="button">
-                        <i class="fas fa-graduation-cap me-1"></i>Educational
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="safety-tab" data-bs-toggle="pill" data-bs-target="#safety" type="button">
-                        <i class="fas fa-shield-alt me-1"></i>Safety
-                    </button>
-                </li>
-            </ul>
-
-            <!-- Tab Content -->
-            <div class="tab-content" id="endpointTabsContent">
-                <!-- Basic Endpoints -->
-                <div class="tab-pane fade show active" id="basic" role="tabpanel">
-                    <div class="row g-4">
-                        <div class="col-lg-6">
-                            <div class="card endpoint-card h-100">
-                                <div class="card-body">
-                                    <h5 class="card-title">
-                                        <span class="badge bg-primary method-badge me-2">GET</span>
-                                        Health Check
-                                    </h5>
-                                    <div class="code-block">
-                                        <code>GET /api/health</code>
-                                    </div>
-                                    <p class="mt-3">Check API service status and view available features.</p>
-                                    <small class="text-muted">Returns server health, timestamp, and cache statistics.</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-6">
-                            <div class="card endpoint-card h-100">
-                                <div class="card-body">
-                                    <h5 class="card-title">
-                                        <span class="badge bg-primary method-badge me-2">GET</span>
-                                        PubChem Proxy
-                                    </h5>
-                                    <div class="code-block">
-                                        <code>GET /api/pubchem/*</code>
-                                    </div>
-                                    <p class="mt-3">Direct proxy to PubChem PUG-REST API with enhanced features.</p>
-                                    <small class="text-muted">Includes educational context for molecular properties.</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Educational Endpoints -->
-                <div class="tab-pane fade" id="educational" role="tabpanel">
-                    <div class="row g-4">
-                        <div class="col-12">
-                            <div class="card endpoint-card">
-                                <div class="card-body">
-                                    <h5 class="card-title">
-                                        <span class="badge bg-success method-badge me-2">GET</span>
-                                        Educational Overview
-                                    </h5>
-                                    <div class="code-block">
-                                        <code>GET /api/pubchem/compound/{identifier}/educational?type={cid|name|formula|smiles}</code>
-                                    </div>
-                                    <p class="mt-3">Get comprehensive educational data for any compound including:</p>
-                                    <ul class="mt-2">
-                                        <li>Basic molecular properties with educational explanations</li>
-                                        <li>Alternative names and synonyms</li>
-                                        <li>Structure visualization URLs (2D/3D)</li>
-                                        <li>Download links for molecular files</li>
-                                        <li>Educational sections available for the compound</li>
-                                    </ul>
-                                    <div class="property-example">
-                                        <strong>Example Response Properties:</strong>
-                                        <pre class="mt-2 mb-0"><code>{
-                                        "cid": 2244,
-                                        "basic_properties": {
-                                            "MolecularFormula": "C9H8O4",
-                                            "MolecularWeight": 180.16,
-                                            "XLogP": 1.2,
-                                            "TPSA": 63.6
-                                        },
-                                        "educational_context": {
-                                            "xlogp_info": "XLogP measures lipophilicity. Values between 1-3 are often ideal for drug-like compounds."
-                                        }
-                                        }</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Examples Section -->
-    <section id="examples" class="py-5">
-        <div class="container">
-            <h2 class="text-center mb-5">
-                <i class="fas fa-code-branch text-primary me-2"></i>
-                Usage Examples
-            </h2>
-
-            <div class="row g-4">
-                <div class="col-lg-6">
-                    <div class="card h-100">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Educational Overview</h5>
-                        </div>
-                        <div class="card-body">
-                            <h6>Get comprehensive educational data for aspirin:</h6>
-                            <div class="code-block">
-                                <code>GET /api/pubchem/compound/aspirin/educational?type=name</code>
-                            </div>
-                            <div class="mt-3">
-                                <strong>JavaScript Example:</strong>
-                                <pre class="bg-light p-2 rounded mt-2"><code>const response = await fetch('https://molexa-api.vercel.app/api/pubchem/compound/aspirin/educational?type=name');
-                                const data = await response.json();
-                                console.log(`Formula: ${data.basic_properties.MolecularFormula}`);
-                                console.log(`Weight: ${data.basic_properties.MolecularWeight}`);</code></pre>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- Citations Section -->
-    <section id="citations" class="py-5 bg-light">
+    <section id="citations" class="section" style="background: white;">
         <div class="container">
-            <h2 class="text-center mb-5">
-                <i class="fas fa-quote-right text-primary me-2"></i>
-                Citations & Attribution
-            </h2>
+            <div class="section-header">
+                <h2 class="section-title">Citations & Attribution</h2>
+                <p class="section-subtitle">
+                    How to properly cite this API and the underlying PubChem database in your research and publications
+                </p>
+            </div>
 
-            <div class="row justify-content-center">
-                <div class="col-lg-10">
-                    <div class="citation-box">
-                        <h4 class="mb-3">
-                            <i class="fas fa-book me-2"></i>
-                            How to Cite This API
-                        </h4>
-                        <p class="mb-3">
-                            When using this educational proxy API in research, publications, or educational materials, 
-                            please cite both this software and the underlying PubChem database:
-                        </p>
-                        
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <h5>This API Software:</h5>
-                                <div class="bg-white p-3 rounded border">
-                                    <strong>APA Format:</strong><br>
-                                    Bazarkulov, A. (2025). <em>moleXa API: PubChem Educational Proxy API</em> (Version 2.0.0) [Computer software]. 
-                                    GitHub. <a href="https://github.com/bazarkua/molexa-api" target="_blank" style="color: #0066cc; font-weight: 500;">https://github.com/bazarkua/molexa-api</a>
-                                </div>
+            <!-- API Citation -->
+            <div class="citation-box">
+                <h3 style="color: var(--blue-700); margin-bottom: var(--spacing-md);">
+                    <i class="fas fa-quote-left" style="margin-right: var(--spacing-sm);"></i>
+                    How to Cite This API
+                </h3>
+                <p style="margin-bottom: var(--spacing-md); color: var(--gray-700);">
+                    When using this educational proxy API in research, publications, or educational materials, 
+                    please cite both this software and the underlying PubChem database:
+                </p>
+                
+                <div class="grid grid-cols-2">
+                    <div>
+                        <h4 style="color: var(--blue-600); margin-bottom: var(--spacing-sm);">moleXa API Software:</h4>
+                        <div class="citation-content">
+Bazarkulov, A. (2025). <em>moleXa API: PubChem Educational Proxy API</em> (Version 2.1.0) [Computer software]. 
+GitHub. <a href="https://github.com/bazarkua/molexa-api" target="_blank">https://github.com/bazarkua/molexa-api</a>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="color: var(--blue-600); margin-bottom: var(--spacing-sm);">Frontend Application:</h4>
+                        <div class="citation-content">
+Bazarkulov, A. (2025). <em>moleXa: 3D Molecular Visualization Platform</em> (Version 2.0.0) [Computer software]. 
+GitHub. <a href="https://github.com/bazarkua/molexa" target="_blank">https://github.com/bazarkua/molexa</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PubChem Citation -->
+            <div class="citation-box">
+                <h3 style="color: var(--green-700); margin-bottom: var(--spacing-md);">
+                    <i class="fas fa-database" style="margin-right: var(--spacing-sm);"></i>
+                    PubChem Database Citation
+                </h3>
+                <p style="margin-bottom: var(--spacing-md); color: var(--gray-700);">
+                    All molecular data comes from PubChem, so please cite them too:
+                </p>
+                
+                <div class="citation-content">
+Kim, S., Chen, J., Cheng, T., Gindulyte, A., He, J., He, S., Li, Q., Shoemaker, B. A., 
+Thiessen, P. A., Yu, B., Zaslavsky, L., Zhang, J., & Bolton, E. E. (2025). 
+PubChem 2025 update. <em>Nucleic Acids Research</em>, 53(D1), D1516–D1525. 
+<a href="https://doi.org/10.1093/nar/gkae1059" target="_blank">https://doi.org/10.1093/nar/gkae1059</a>
+                </div>
+
+                <div style="margin-top: var(--spacing-md);">
+                    <h4 style="color: var(--green-600); margin-bottom: var(--spacing-sm);">Additional PubChem Resources:</h4>
+                    <div class="grid grid-cols-2">
+                        <div>
+                            <strong>PUG-REST API:</strong>
+                            <div class="citation-content" style="font-size: 12px;">
+Kim S, Thiessen PA, Cheng T, Yu B, Bolton EE. An update on PUG-REST: RESTful interface for programmatic 
+access to PubChem. <em>Nucleic Acids Res.</em> 2018 July 2; 46(W1):W563-570. 
+DOI: <a href="https://doi.org/10.1093/nar/gky294" target="_blank">10.1093/nar/gky294</a>
                             </div>
-                            <div class="col-md-6">
-                                <h5>PubChem Database:</h5>
-                                <div class="bg-white p-3 rounded border">
-                                    <strong>Primary Citation:</strong><br>
-                                    Kim, S., Chen, J., Cheng, T., Gindulyte, A., He, J., He, S., Li, Q., Shoemaker, B. A., Thiessen, P. A., Yu, B., Zaslavsky, L., Zhang, J., & Bolton, E. E. (2023). PubChem 2023 update. <em>Nucleic Acids Research</em>, 51(D1), D1373–D1380. <a href="https://doi.org/10.1093/nar/gkac956" target="_blank" style="color: #0066cc; font-weight: 500;">https://doi.org/10.1093/nar/gkac956</a>
-                                </div>
+                        </div>
+                        <div>
+                            <strong>PubChem3D:</strong>
+                            <div class="citation-content" style="font-size: 12px;">
+Bolton EE, Chen J, Kim S, et al. PubChem3D: A new resource for scientists. 
+<em>J Cheminform.</em> 2011 Sep 20; 3(1):32. 
+DOI: <a href="https://doi.org/10.1186/1758-2946-3-32" target="_blank">10.1186/1758-2946-3-32</a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
 
-    <!-- License Section -->
-    <section id="license" class="py-5">
-        <div class="container">
-            <h2 class="text-center mb-5">
-                <i class="fas fa-balance-scale text-primary me-2"></i>
-                License & Legal
-            </h2>
+            <!-- BibTeX Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-file-code" style="margin-right: var(--spacing-sm);"></i>
+                        BibTeX Format
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="code-block">
+@software{bazarkulov2025molexa_api,
+  author = {Bazarkulov, Adilbek},
+  title = {moleXa API: PubChem Educational Proxy API},
+  version = {2.1.0},
+  year = {2025},
+  url = {https://github.com/bazarkua/molexa-api}
+}
 
-            <div class="row justify-content-center">
-                <div class="col-lg-8">
-                    <div class="card border-0 shadow">
-                        <div class="card-body p-4">
-                            <h4 class="card-title text-center mb-4">
-                                <i class="fab fa-osi me-2"></i>
-                                MIT License
-                            </h4>
-                            
-                            <div class="bg-light p-3 rounded mb-4">
-                                <strong>Copyright © 2025 Adilbek Bazarkulov</strong>
-                            </div>
-
-                            <p>
-                                Permission is hereby granted, free of charge, to any person obtaining a copy
-                                of this software and associated documentation files (the "Software"), to deal
-                                in the Software without restriction, including without limitation the rights
-                                to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-                                copies of the Software.
-                            </p>
-
-                            <div class="text-center mt-4">
-                                <a href="https://opensource.org/licenses/MIT" target="_blank" class="btn btn-outline-primary" style="border-color: #0066cc; color: #0066cc;">
-                                    <i class="fas fa-external-link-alt me-2"></i>
-                                    View Full MIT License
-                                </a>
-                            </div>
-                        </div>
+@article{kim2025pubchem,
+  title={PubChem 2025 update},
+  author={Kim, Sunghwan and Chen, Jie and Cheng, Tiejun and Gindulyte, Asta and He, Jia and He, Siqian and Li, Qingliang and Shoemaker, Benjamin A and Thiessen, Paul A and Yu, Bo and others},
+  journal={Nucleic Acids Research},
+  volume={53},
+  number={D1},
+  pages={D1516--D1525},
+  year={2025},
+  publisher={Oxford University Press},
+  doi={10.1093/nar/gkae1059}
+}
                     </div>
                 </div>
             </div>
@@ -737,60 +1077,104 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <div class="row">
-                <div class="col-lg-6">
-                    <h5>
-                        <img src="/public/android-chrome-192x192.png" alt="moleXa Logo" style="width: 48px; height: 48px; margin-right: 10px; vertical-align: middle;">
-                        moleXa Educational Proxy
-                    </h5>
-                    <p class="text-light">
-                        Empowering chemistry education through enhanced access to molecular data with 
-                        safety information, educational context, and comprehensive analytics.
+            <div class="grid grid-cols-3" style="margin-bottom: var(--spacing-xl);">
+                <!-- About Section -->
+                <div>
+                    <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+                        <div style="width: 48px; height: 48px; background: white; border-radius: var(--border-radius-lg); display: flex; align-items: center; justify-content: center;">
+                            <img src="/public/android-chrome-192x192.png" alt="moleXa Logo" style="width: 32px; height: 32px; border-radius: 6px;">
+                        </div>
+                        <h3>moleXa</h3>
+                    </div>
+                    <p style="margin-bottom: var(--spacing-md);">
+                        A comprehensive educational API for molecular visualization and chemistry learning, 
+                        providing enhanced access to PubChem data with safety information and educational context.
                     </p>
+                    <div style="display: flex; align-items: center; gap: var(--spacing-sm); font-size: 14px; color: var(--gray-400);">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span>Educational Use • MIT License</span>
+                    </div>
                 </div>
-                <div class="col-lg-3">
-                    <h6>Quick Links</h6>
-                    <ul class="list-unstyled">
-                        <li><a href="#overview">Overview</a></li>
-                        <li><a href="#analytics">Live Analytics</a></li>
-                        <li><a href="#endpoints">API Endpoints</a></li>
-                        <li><a href="#examples">Examples</a></li>
+
+                <!-- Links Section -->
+                <div>
+                    <h4>Resources & Links</h4>
+                    <ul>
+                        <li><a href="https://molexa.org" target="_blank">Live Demo (molexa.org)</a></li>
+                        <li><a href="https://github.com/bazarkua/molexa" target="_blank">Frontend GitHub</a></li>
+                        <li><a href="https://github.com/bazarkua/molexa-api" target="_blank">API GitHub</a></li>
+                        <li><a href="/api/json/docs">JSON API Documentation</a></li>
+                        <li><a href="https://pubchem.ncbi.nlm.nih.gov/" target="_blank">PubChem Database</a></li>
+                        <li><a href="https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest" target="_blank">PUG-REST Documentation</a></li>
                     </ul>
                 </div>
-                <div class="col-lg-3">
-                    <h6>Resources</h6>
-                    <ul class="list-unstyled">
-                        <li><a href="https://pubchem.ncbi.nlm.nih.gov" target="_blank">PubChem Database</a></li>
-                        <li><a href="https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest" target="_blank">PUG-REST Docs</a></li>
-                        <li><a href="https://github.com/bazarkua/molexa-api" target="_blank">GitHub Repository</a></li>
+
+                <!-- Technology Section -->
+                <div>
+                    <h4>Technology Stack</h4>
+                    <ul>
+                        <li>• Node.js & Express.js</li>
+                        <li>• Vercel Serverless Functions</li>
+                        <li>• Supabase Analytics Database</li>
+                        <li>• PubChem PUG-REST & PUG-View APIs</li>
+                        <li>• Real-time Server-Sent Events</li>
+                        <li>• Educational Content Enhancement</li>
                     </ul>
                 </div>
             </div>
-            <hr class="text-light">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <p class="mb-0 text-light">
-                        &copy; 2025 Adilbek Bazarkulov. Licensed under MIT License.
-                    </p>
+
+            <!-- Development Acknowledgment -->
+            <div style="background: rgba(255, 255, 255, 0.05); border-radius: var(--border-radius-lg); padding: var(--spacing-xl); margin-bottom: var(--spacing-xl);">
+                <h4 style="margin-bottom: var(--spacing-md);">Development Acknowledgment</h4>
+                <p style="margin-bottom: var(--spacing-md);">
+                    This educational molecular visualization platform was developed by <strong style="color: white;">Adilbek Bazarkulov</strong> 
+                    with assistance from <strong style="color: white;">Claude AI (Anthropic)</strong> for architecture design, 
+                    code optimization, and educational feature enhancement. The project aims to make molecular 
+                    chemistry more accessible for educational purposes.
+                </p>
+                <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-md); font-size: 12px; color: var(--gray-400);">
+                    <span>Built with Next.js, Three.js, and modern web technologies</span>
+                    <span>Enhanced with AI-assisted development</span>
+                    <span>Open source under MIT License</span>
                 </div>
-                <div class="col-md-6 text-md-end">
-                    <p class="mb-0 text-light">
-                        Built for educational purposes with <i class="fas fa-heart" style="color: #ff69b4;"></i>
+            </div>
+
+            <div class="footer-divider"></div>
+
+            <!-- Bottom Section -->
+            <div class="footer-bottom">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--spacing-lg); text-align: center;">
+                    <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                        <i class="fas fa-copyright"></i>
+                        <span>2025 Adilbek Bazarkulov • MIT License</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                        <i class="fas fa-database"></i>
+                        <span>Data from PubChem Database (NCBI)</span>
+                    </div>
+                </div>
+                <div style="margin-top: var(--spacing-md);">
+                    <p style="font-size: 14px; color: var(--gray-400);">
+                        <i class="fas fa-heart" style="color: #ff69b4; margin: 0 var(--spacing-xs);"></i>
+                        Built for educational purposes with a commitment to open science and accessible chemistry education
                     </p>
                 </div>
             </div>
         </div>
     </footer>
 
-    <!-- Bootstrap JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Live Analytics JavaScript -->
+    <!-- JavaScript -->
     <script>
-        // Global analytics state
+        // Analytics state
         let analyticsData = {
             totalRequests: 0,
             recentRequests: [],
+            metrics: {
+                educational: 0,
+                safety: 0,
+                search: 0,
+                total: 0
+            }
         };
         
         // Connect to SSE stream for real-time updates
@@ -808,9 +1192,9 @@
                 if (data.type === 'initial') {
                     updateAnalytics(data.analytics);
                     updateRecentRequests(data.recentRequests);
-                } else if (data.type === 'new_request') {
-                    addNewRequest(data.data);
+                } else if (data.type === 'update') {
                     updateAnalytics(data.analytics);
+                    updateRecentRequests(data.recentRequests);
                 }
             } catch (error) {
                 console.error('Error parsing analytics data:', error);
@@ -820,23 +1204,13 @@
         eventSource.onerror = function(event) {
             console.log('❌ Analytics stream disconnected');
             updateConnectionStatus(false);
-            
-            // Try to reconnect after 5 seconds
-            setTimeout(() => {
-                console.log('🔄 Attempting to reconnect...');
-            }, 5000);
         };
         
         function updateConnectionStatus(connected) {
-            const statusElements = document.querySelectorAll('.status-dot');
-            statusElements.forEach(dot => {
-                if (connected) {
-                    dot.style.backgroundColor = '#28a745';
-                    dot.style.animation = 'pulse 2s infinite';
-                } else {
-                    dot.style.backgroundColor = '#dc3545';
-                    dot.style.animation = 'none';
-                }
+            const statusDots = document.querySelectorAll('.status-dot');
+            statusDots.forEach(dot => {
+                dot.style.backgroundColor = connected ? 'var(--green-500)' : 'var(--red-500)';
+                dot.style.animation = connected ? 'pulse 2s infinite' : 'none';
             });
         }
         
@@ -844,92 +1218,26 @@
             analyticsData.totalRequests = analytics.totalRequests;
             
             // Update main stats
-            document.getElementById('totalRequests').textContent = analytics.totalRequests;
-            document.getElementById('heroTotalRequests').textContent = analytics.totalRequests;
+            document.getElementById('totalRequests').textContent = analytics.totalRequests.toLocaleString();
+            document.getElementById('heroTotalRequests').textContent = analytics.totalRequests.toLocaleString();
             
-            // // Update educational impact metrics
-            // updateEducationalMetrics();
-            
-            // Update top endpoints
-            if (analytics.topEndpoints) {
-                updateTopEndpoints(analytics.topEndpoints);
-            }
-        }
-        
-        // function updateEducationalMetrics() {
-        //     const safetyCount = analyticsData.recentRequests.filter(r => 
-        //         r.type.toLowerCase().includes('safety') || 
-        //         r.endpoint.includes('safety')).length;
-                
-        //     const educationalCount = analyticsData.recentRequests.filter(r => 
-        //         r.type.toLowerCase().includes('educational') || 
-        //         r.endpoint.includes('educational')).length;
-                
-        //     const propertiesCount = analyticsData.recentRequests.filter(r => 
-        //         r.type.toLowerCase().includes('properties') || 
-        //         r.endpoint.includes('properties')).length;
-                
-        //     const pharmacologyCount = analyticsData.recentRequests.filter(r => 
-        //         r.type.toLowerCase().includes('pharmacology') || 
-        //         r.endpoint.includes('pharmacology')).length;
-                
-        //     const searchCount = analyticsData.recentRequests.filter(r => 
-        //         r.type.toLowerCase().includes('search') || 
-        //         r.type.toLowerCase().includes('autocomplete')).length;
-                
-        //     const imageCount = analyticsData.recentRequests.filter(r => 
-        //         r.type.toLowerCase().includes('image') || 
-        //         r.endpoint.includes('.PNG')).length;
-            
-           
-            
-        // }
-        
-        function updateTopEndpoints(topEndpoints) {
-            const container = document.getElementById('topEndpoints');
-            if (!topEndpoints || topEndpoints.length === 0) {
-                container.innerHTML = '<div class="text-center text-muted"><p>No data yet</p></div>';
-                return;
-            }
-            
-            container.innerHTML = topEndpoints.map(([endpoint, count]) => `
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="text-truncate small">${endpoint}</span>
-                    <span class="badge bg-primary">${count}</span>
-                </div>
-            `).join('');
-        }
-        
-        function addNewRequest(request) {
-            analyticsData.recentRequests.unshift(request);
-            
-            // Keep only last 20 requests
-            if (analyticsData.recentRequests.length > 20) {
-                analyticsData.recentRequests = analyticsData.recentRequests.slice(0, 20);
-            }
-            
-            const feed = document.getElementById('activityFeed');
-            const requestElement = createRequestElement(request, true);
-            
-            // Clear placeholder if it exists
-            if (feed.children.length === 0 || feed.children[0].classList.contains('text-center')) {
-                feed.innerHTML = '';
-            }
-            
-            feed.insertBefore(requestElement, feed.firstChild);
-            
-            // Add pulse animation for new requests
-            requestElement.classList.add('pulse');
-            setTimeout(() => requestElement.classList.remove('pulse'), 2000);
-            
-            // Remove old requests (keep only 10 visible)
-            const children = Array.from(feed.children);
-            if (children.length > 10) {
-                children.slice(10).forEach(child => child.remove());
-            }
-            
-            // Update educational metrics
+            // Calculate derived metrics from recent requests
             updateEducationalMetrics();
+        }
+        
+        function updateEducationalMetrics() {
+            const safetyCount = analyticsData.recentRequests.filter(r => 
+                r.type && (r.type.toLowerCase().includes('safety') || r.endpoint.includes('safety'))).length;
+                
+            const educationalCount = analyticsData.recentRequests.filter(r => 
+                r.type && (r.type.toLowerCase().includes('educational') || r.endpoint.includes('educational'))).length;
+                
+            const searchCount = analyticsData.recentRequests.filter(r => 
+                r.type && (r.type.toLowerCase().includes('search') || r.type.toLowerCase().includes('autocomplete'))).length;
+            
+            document.getElementById('educationalCount').textContent = educationalCount;
+            document.getElementById('safetyCount').textContent = safetyCount;
+            document.getElementById('searchCount').textContent = searchCount;
         }
         
         function updateRecentRequests(requests) {
@@ -938,59 +1246,51 @@
             
             if (requests.length === 0) {
                 feed.innerHTML = `
-                    <div class="text-center text-muted">
-                        <i class="fas fa-hourglass-half fa-2x mb-3"></i>
-                        <p>Waiting for API requests...</p>
+                    <div class="loading">
+                        <i class="fas fa-hourglass-half" style="margin-right: var(--spacing-sm);"></i>
+                        Waiting for API requests...
                     </div>
                 `;
                 return;
             }
             
-            feed.innerHTML = requests.slice(0, 10).map(request => 
-                createRequestElement(request).outerHTML
+            feed.innerHTML = requests.slice(0, 15).map(request => 
+                createRequestElement(request)
             ).join('');
             
+            updateEducationalMetrics();
         }
         
-        function createRequestElement(request, isNew = false) {
-            const div = document.createElement('div');
-            div.className = `recent-request ${isNew ? 'new' : ''}`;
-            
+        function createRequestElement(request) {
             const timeAgo = new Date(request.timestamp).toLocaleTimeString();
-            const typeColor = getTypeColor(request.type);
+            const typeClass = getTypeClass(request.type);
             
-            div.innerHTML = `
-                <div class="d-flex justify-content-between align-items-start">
-                    <div class="flex-grow-1">
-                        <div class="d-flex align-items-center mb-1">
-                            <span class="badge ${typeColor} badge-request-type me-2">${request.type}</span>
-                            <small class="text-muted">${timeAgo}</small>
-                        </div>
-                        <div class="small text-truncate" style="max-width: 300px;">
-                            <span class="badge bg-secondary me-1">${request.method}</span>
-                            ${request.endpoint}
-                        </div>
+            return `
+                <div class="activity-item">
+                    <div class="activity-meta">
+                        <span class="activity-type ${typeClass}">${request.type}</span>
+                        <span class="activity-time">${timeAgo}</span>
                     </div>
-                    <i class="fas fa-globe text-muted"></i>
+                    <div class="activity-endpoint">
+                        <span class="activity-method">${request.method}</span>
+                        ${request.endpoint}
+                    </div>
                 </div>
             `;
-            
-            return div;
         }
         
-        function getTypeColor(type) {
-            const colors = {
-                'Educational Overview': 'bg-primary',
-                'Safety Data': 'bg-warning text-dark',
-                'Pharmacology': 'bg-info',
-                'Properties': 'bg-secondary',
-                'Autocomplete': 'bg-success',
-                'Educational Annotations': 'bg-purple',
-                'Name Search': 'bg-primary',
-                'Structure Image': 'bg-info',
-                'Structure File': 'bg-secondary'
+        function getTypeClass(type) {
+            const typeMap = {
+                'Educational Overview': 'type-educational',
+                'Educational Annotations': 'type-educational',
+                'Safety Data': 'type-safety',
+                'Properties': 'type-properties',
+                'Autocomplete': 'type-search',
+                'Name Search': 'type-search',
+                'Structure Image': 'type-image',
+                'Structure File': 'type-image'
             };
-            return colors[type] || 'bg-light text-dark';
+            return typeMap[type] || 'type-educational';
         }
         
         // Initialize analytics on page load
@@ -1004,6 +1304,12 @@
                 })
                 .catch(error => {
                     console.error('Error loading initial analytics:', error);
+                    document.getElementById('activityFeed').innerHTML = `
+                        <div class="loading" style="color: var(--red-500);">
+                            <i class="fas fa-exclamation-triangle" style="margin-right: var(--spacing-sm);"></i>
+                            Failed to load analytics data
+                        </div>
+                    `;
                 });
         });
         
@@ -1028,12 +1334,12 @@
             
             sections.forEach(section => {
                 const sectionTop = section.offsetTop;
-                if (pageYOffset >= sectionTop - 200) {
+                if (pageYOffset >= sectionTop - 100) {
                     current = section.getAttribute('id');
                 }
             });
 
-            document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+            document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
                 if (link.getAttribute('href') === '#' + current) {
                     link.classList.add('active');

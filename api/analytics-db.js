@@ -9,39 +9,6 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
-// Database tables schema:
-/*
-CREATE TABLE api_requests (
-  id SERIAL PRIMARY KEY,
-  timestamp TIMESTAMPTZ DEFAULT NOW(),
-  method VARCHAR(10) NOT NULL,
-  endpoint TEXT NOT NULL,
-  ip_hash VARCHAR(64), -- hashed for privacy
-  user_agent_hash VARCHAR(64), -- hashed for privacy
-  request_type VARCHAR(50) NOT NULL,
-  response_status INTEGER,
-  response_time_ms INTEGER,
-  month_year VARCHAR(7) NOT NULL, -- '2025-01' for easy archival
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE monthly_summaries (
-  id SERIAL PRIMARY KEY,
-  month_year VARCHAR(7) NOT NULL UNIQUE,
-  total_requests INTEGER DEFAULT 0,
-  requests_by_type JSONB DEFAULT '{}',
-  requests_by_endpoint JSONB DEFAULT '{}',
-  average_response_time FLOAT DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  archived_at TIMESTAMPTZ
-);
-
--- Indexes for performance
-CREATE INDEX idx_api_requests_month_year ON api_requests(month_year);
-CREATE INDEX idx_api_requests_timestamp ON api_requests(timestamp);
-CREATE INDEX idx_api_requests_type ON api_requests(request_type);
-*/
-
 class AnalyticsDB {
   constructor() {
     this.currentMonth = this.getCurrentMonth();
@@ -60,48 +27,164 @@ class AnalyticsDB {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
 
-  // Initialize cache from database
-  async initializeCache() {
-    if (!supabase) {
-      console.log('📊 Analytics: Using memory-only mode (no database configured)');
+// Initialize cache from database
+async initializeCache() {
+  if (!supabase) {
+    console.log('📊 Analytics: Using memory-only mode (no database configured)');
+    return;
+  }
+
+  try {
+    console.log('📊 Initializing analytics cache from Supabase...');
+    
+    // Test connection first
+    const { data: testData, error: testError } = await supabase
+      .from('api_requests')
+      .select('count', { count: 'exact' })
+      .limit(1);
+    
+    if (testError) {
+      console.error('❌ Supabase connection test failed:', testError);
       return;
+    }
+    
+    console.log('✅ Supabase connection successful');
+
+    // Get current month summary
+    const { data: summary, error: summaryError } = await supabase
+      .from('monthly_summaries')
+      .select('*')
+      .eq('month_year', this.currentMonth)
+      .single();
+
+    if (summaryError && summaryError.code !== 'PGRST116') { // PGRST116 = no rows found
+      console.error('❌ Error fetching monthly summary:', summaryError);
+    }
+
+    if (summary) {
+      console.log(`📊 Found summary for ${this.currentMonth}: ${summary.total_requests} requests`);
+      this.cache.totalRequests = summary.total_requests || 0;
+      this.cache.requestsByType = summary.requests_by_type || {};
+      this.cache.requestsByEndpoint = summary.requests_by_endpoint || {};
+    } else {
+      console.log(`📊 No summary found for ${this.currentMonth}, starting fresh`);
+      // Create initial summary if it doesn't exist
+      await this.createInitialSummary();
+    }
+
+    // Get recent requests (last 50)
+    const { data: recentRequests, error: requestsError } = await supabase
+      .from('api_requests')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .limit(50);
+
+    if (requestsError) {
+      console.error('❌ Error fetching recent requests:', requestsError);
+    } else {
+      this.cache.recentRequests = (recentRequests || []).map(r => ({
+        id: r.id,
+        timestamp: r.timestamp,
+        method: r.method,
+        endpoint: r.endpoint,
+        type: r.request_type,
+        request_type: r.request_type
+      }));
+      console.log(`📊 Loaded ${this.cache.recentRequests.length} recent requests`);
+    }
+
+    console.log(`📊 Analytics cache initialized: ${this.cache.totalRequests} total requests`);
+  } catch (error) {
+    console.error('❌ Error initializing analytics cache:', error);
+  }
+}
+
+// NEW: Create initial summary for current month
+async createInitialSummary() {
+  try {
+    const { error } = await supabase
+      .from('monthly_summaries')
+      .insert([{
+        month_year: this.currentMonth,
+        total_requests: 0,
+        requests_by_type: {},
+        requests_by_endpoint: {},
+        average_response_time: 0
+      }]);
+    
+    if (error) {
+      console.error('❌ Error creating initial summary:', error);
+    } else {
+      console.log(`📊 Created initial summary for ${this.currentMonth}`);
+    }
+  } catch (error) {
+    console.error('❌ Error in createInitialSummary:', error);
+  }
+}
+
+  // NEW: Get recent requests directly from database
+  async getRecentRequestsFromDB(limit = 50) {
+    if (!supabase) {
+      return this.cache.recentRequests.slice(0, limit);
     }
 
     try {
-      // Get current month summary
-      const { data: summary } = await supabase
-        .from('monthly_summaries')
-        .select('*')
-        .eq('month_year', this.currentMonth)
-        .single();
-
-      if (summary) {
-        this.cache.totalRequests = summary.total_requests;
-        this.cache.requestsByType = summary.requests_by_type || {};
-        this.cache.requestsByEndpoint = summary.requests_by_endpoint || {};
-      }
-
-      // Get recent requests (last 50)
-      const { data: recentRequests } = await supabase
+      const { data: recentRequests, error } = await supabase
         .from('api_requests')
         .select('*')
         .order('timestamp', { ascending: false })
-        .limit(50);
+        .limit(limit);
 
-      if (recentRequests) {
-        this.cache.recentRequests = recentRequests.map(r => ({
-          id: r.id,
-          timestamp: r.timestamp,
-          method: r.method,
-          endpoint: r.endpoint,
-          type: r.request_type
-        }));
-      }
+      if (error) throw error;
 
-      console.log(`📊 Analytics cache initialized: ${this.cache.totalRequests} total requests`);
+      return (recentRequests || []).map(r => ({
+        id: r.id,
+        timestamp: r.timestamp,
+        method: r.method,
+        endpoint: r.endpoint,
+        type: r.request_type,
+        request_type: r.request_type,
+        response_status: r.response_status,
+        response_time_ms: r.response_time_ms
+      }));
     } catch (error) {
-      console.error('❌ Error initializing analytics cache:', error);
+      console.error('❌ Error fetching recent requests from database:', error);
+      return this.cache.recentRequests.slice(0, limit);
     }
+  }
+
+  // NEW: Calculate metrics from recent requests
+  calculateMetricsFromRequests(requests) {
+    const metrics = {
+      educational: 0,
+      safety: 0,
+      properties: 0,
+      pharmacology: 0,
+      search: 0,
+      images: 0,
+      total: requests.length
+    };
+
+    requests.forEach(request => {
+      const type = (request.type || '').toLowerCase();
+      const endpoint = (request.endpoint || '').toLowerCase();
+
+      if (type.includes('educational') || endpoint.includes('educational')) {
+        metrics.educational++;
+      } else if (type.includes('safety') || endpoint.includes('safety')) {
+        metrics.safety++;
+      } else if (type.includes('properties') || endpoint.includes('properties')) {
+        metrics.properties++;
+      } else if (type.includes('pharmacology') || endpoint.includes('pharmacology')) {
+        metrics.pharmacology++;
+      } else if (type.includes('autocomplete') || type.includes('search') || endpoint.includes('autocomplete')) {
+        metrics.search++;
+      } else if (type.includes('image') || endpoint.includes('.png')) {
+        metrics.images++;
+      }
+    });
+
+    return metrics;
   }
 
   // Check if this request should be tracked
@@ -174,15 +257,15 @@ class AnalyticsDB {
     };
 
     // Update cache immediately
-      this.cache.totalRequests++;
-        const cacheEntry = {
-            ...requestData,
-            type: requestData.request_type
-        };
-        this.cache.recentRequests.unshift(cacheEntry);
-        if (this.cache.recentRequests.length > 50) {
-            this.cache.recentRequests = this.cache.recentRequests.slice(0, 50);
-        }
+    this.cache.totalRequests++;
+    const cacheEntry = {
+      ...requestData,
+      type: requestData.request_type
+    };
+    this.cache.recentRequests.unshift(cacheEntry);
+    if (this.cache.recentRequests.length > 50) {
+      this.cache.recentRequests = this.cache.recentRequests.slice(0, 50);
+    }
 
     // Update counters
     this.cache.requestsByType[requestData.request_type] = 
@@ -299,12 +382,12 @@ class AnalyticsDB {
     };
   }
 
-  // Get recent requests for display
+  // Get recent requests for display (from cache)
   getRecentRequests(limit = 20) {
     return this.cache.recentRequests.slice(0, limit);
   }
 
-  // Monthly archival process
+  // Monthly archival and other methods remain the same...
   async archiveMonth(monthYear) {
     if (!supabase) {
       console.log('📊 Skipping archival (no database configured)');
@@ -352,15 +435,6 @@ class AnalyticsDB {
         .from('monthly_summaries')
         .update({ archived_at: new Date().toISOString() })
         .eq('month_year', monthYear);
-
-      // Optionally delete old requests (keep summary)
-      // Uncomment if you want to delete old data to save space
-      /*
-      await supabase
-        .from('api_requests')
-        .delete()
-        .eq('month_year', monthYear);
-      */
 
       console.log(`✅ Archived ${requests.length} requests for ${monthYear} to ${filename}`);
       return filename;
