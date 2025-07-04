@@ -446,14 +446,14 @@
                 </div>
             </div>
 
-             <!-- Stats Row -->
+            <!-- Stats Row -->
             <div class="row mb-4">
-                <div class="col-md-2 mb-3">
+                <div class="col-md-3 mb-3">
                     <div class="card stat-card border-0 text-center h-100">
                         <div class="card-body">
-                            <i class="fas fa-globe fa-2x mb-3"></i>
+                            <i class="fas fa-flask fa-2x mb-3"></i>
                             <h3 class="mb-0" id="totalRequests">0</h3>
-                            <p class="mb-0 opacity-75">Total Requests</p>
+                            <p class="mb-0 opacity-75">Total API Requests</p>
                         </div>
                     </div>
                 </div>
@@ -1050,18 +1050,12 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
     
     <!-- Enhanced Live Analytics JavaScript -->
     <script>
-        // Global analytics state with better persistence
+        // Global analytics state
         let analyticsData = {
             totalRequests: 0,
             recentRequests: [],
             requestsByType: {},
-            connected: false,
-            // 🔧 NEW: Cumulative counters that don't reset
-            cumulativeCounts: {
-                search: 0,
-                educational: 0,
-                images: 0
-            }
+            connected: false
         };
         
         let eventSource = null;
@@ -1232,18 +1226,8 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
             document.getElementById('totalRequests').textContent = analyticsData.totalRequests;
             document.getElementById('heroTotalRequests').textContent = analyticsData.totalRequests;
             
-            // 🔧 FIX: Use backend's cumulative counts directly - NO MORE CALCULATION
-            if (analytics.cumulativeCounts) {
-                document.getElementById('searchRequests').textContent = analytics.cumulativeCounts.search || 0;
-                document.getElementById('educationalRequests').textContent = analytics.cumulativeCounts.educational || 0;
-                document.getElementById('imageRequests').textContent = analytics.cumulativeCounts.images || 0;
-                
-                console.log(`📊 Using backend cumulative counts:`, analytics.cumulativeCounts);
-            } else {
-                // Fallback to old method if cumulative counts not available
-                console.log(`⚠️ No cumulative counts from backend, using fallback calculation`);
-                updateRequestTypeCounts();
-            }
+            // Don't calculate request type counts here - wait for recent requests data
+            // updateRequestTypeCounts(); // REMOVED - will be called in updateRecentRequests
             
             // Update request types breakdown
             updateRequestTypesDisplay();
@@ -1278,26 +1262,15 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
                 return type.includes('image') ||
                        type.includes('structure') ||
                        endpoint.includes('.png') ||
-                       endpoint.includes('.PNG') || // 🔧 FIX: Check both cases
                        endpoint.includes('.jpg') ||
                        endpoint.includes('.svg');
             }).length;
             
             console.log(`📊 Counts: Search=${searchCount}, Educational=${educationalCount}, Images=${imageCount}`);
             
-            // 🔧 FIX: Only update if we have data, preserve existing counts if no recent data
-            if (recentRequests.length > 0) {
-                document.getElementById('searchRequests').textContent = searchCount;
-                document.getElementById('educationalRequests').textContent = educationalCount;
-                document.getElementById('imageRequests').textContent = imageCount;
-            } else {
-                // If no recent requests, try to maintain existing counts or set to 0
-                const currentSearch = parseInt(document.getElementById('searchRequests').textContent) || 0;
-                const currentEducational = parseInt(document.getElementById('educationalRequests').textContent) || 0;
-                const currentImages = parseInt(document.getElementById('imageRequests').textContent) || 0;
-                
-                console.log(`📊 No recent requests, maintaining: Search=${currentSearch}, Educational=${currentEducational}, Images=${currentImages}`);
-            }
+            document.getElementById('searchRequests').textContent = searchCount;
+            document.getElementById('educationalRequests').textContent = educationalCount;
+            document.getElementById('imageRequests').textContent = imageCount;
         }
         
         function updateRequestTypesDisplay() {
@@ -1340,7 +1313,7 @@ console.log('CIDs:', data.IdentifierList.CID);</code></pre>
             ).join('');
             
             // Always update counts after setting recent requests
-            //updateRequestTypeCounts();
+            updateRequestTypeCounts();
         }
         
         function showConnectionError() {
