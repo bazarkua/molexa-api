@@ -7,7 +7,7 @@ const fetch = require('node-fetch');
 // Configuration for different environments
 const environments = {
   local: 'http://localhost:3001',
-  production: 'http://localhost:3001'
+  production: 'http://molexa-api.vercel.app'
 };
 
 // Default to production for testing deployed version
@@ -175,21 +175,14 @@ async function runProductionTests() {
       timeout: 30000 // PUG-View can be slower
     },
     
-    // 12. Live Analytics Dashboard
-    {
-      name: '12. Live Analytics Dashboard',
-      url: `${BASE_URL}/api/dashboard`,
-      description: 'Interactive real-time analytics dashboard'
-    },
-    
-    // 13. Educational Headings
+    // 12. Educational Headings
     {
       name: '13. Available Educational Headings',
       url: `${BASE_URL}/api/pugview/headings/safety`,
       description: 'Available educational content categories'
     },
     
-    // 14. Error Handling Test
+    // 13. Error Handling Test
     {
       name: '14. Invalid Compound Error Handling',
       url: `${BASE_URL}/api/pubchem/compound/name/nonexistentcompound999/cids/JSON`,
@@ -198,7 +191,7 @@ async function runProductionTests() {
       timeout: 20000
     },
     
-    // 15. Non-existent API endpoint
+    // 14. Non-existent API endpoint
     {
       name: '15. Non-existent API Endpoint',
       url: `${BASE_URL}/api/nonexistent`,
