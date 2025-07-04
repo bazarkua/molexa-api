@@ -182,3 +182,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 - **Frontend**: [https://molexa.org](https://molexa.org)
 - **Frontend repo**: [https://github.com/bazarkua/molexa](https://github.com/bazarkua/molexa)
 - **PubChem**: [https://pubchem.ncbi.nlm.nih.gov](https://pubchem.ncbi.nlm.nih.gov)
+
+---
+
+Built with passion and vision for accessible education.

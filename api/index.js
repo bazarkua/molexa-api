@@ -483,9 +483,6 @@ app.get('/api/json/docs', (req, res) => {
   });
 });
 
-// Enhanced compound data endpoint with educational properties
-// 🔧 FIXED: Updated to use fastformula instead of deprecated formula endpoint
-// Enhanced compound data endpoint with educational properties
 // 🔧 FIXED: Updated to properly handle fastformula endpoint
 // Fixed educational endpoint - resolves encodedIdentifier scope issue
 app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
