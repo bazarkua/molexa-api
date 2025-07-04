@@ -154,38 +154,29 @@ async createInitialSummary() {
   }
 
   // NEW: Calculate metrics from recent requests
-  calculateMetricsFromRequests(requests) {
-    const metrics = {
-      educational: 0,
-      safety: 0,
-      properties: 0,
-      pharmacology: 0,
-      search: 0,
-      images: 0,
-      total: requests.length
-    };
+calculateMetricsFromRequests(requests) {
+  const metrics = {
+    educational: 0,
+    safety: 0,
+    search: 0,
+    total: requests.length
+  };
 
-    requests.forEach(request => {
-      const type = (request.type || '').toLowerCase();
-      const endpoint = (request.endpoint || '').toLowerCase();
+  requests.forEach(request => {
+    const type = (request.type || '').toLowerCase();
+    const endpoint = (request.endpoint || '').toLowerCase();
 
-      if (type.includes('educational') || endpoint.includes('educational')) {
-        metrics.educational++;
-      } else if (type.includes('safety') || endpoint.includes('safety')) {
-        metrics.safety++;
-      } else if (type.includes('properties') || endpoint.includes('properties')) {
-        metrics.properties++;
-      } else if (type.includes('pharmacology') || endpoint.includes('pharmacology')) {
-        metrics.pharmacology++;
-      } else if (type.includes('autocomplete') || type.includes('search') || endpoint.includes('autocomplete')) {
-        metrics.search++;
-      } else if (type.includes('image') || endpoint.includes('.png')) {
-        metrics.images++;
-      }
-    });
+    if (type.includes('educational') || endpoint.includes('educational')) {
+      metrics.educational++;
+    } else if (type.includes('safety') || endpoint.includes('safety')) {
+      metrics.safety++;
+    } else if (type.includes('autocomplete') || type.includes('search') || endpoint.includes('autocomplete')) {
+      metrics.search++;
+    }
+  });
 
-    return metrics;
-  }
+  return metrics;
+}
 
   // Check if this request should be tracked
   shouldTrackRequest(url, method) {
@@ -381,6 +372,86 @@ async createInitialSummary() {
       currentMonth: this.currentMonth
     };
   }
+
+  // NEW: Get actual total requests from database (current month + all previous months)
+async getTotalRequestsFromDB() {
+  if (!supabase) {
+    return this.cache.totalRequests;
+  }
+
+  try {
+    // Get total from all monthly summaries
+    const { data: summaries, error } = await supabase
+      .from('monthly_summaries')
+      .select('total_requests');
+
+    if (error) throw error;
+
+    const total = summaries.reduce((sum, summary) => sum + (summary.total_requests || 0), 0);
+    return total;
+  } catch (error) {
+    console.error('❌ Error fetching total requests from database:', error);
+    return this.cache.totalRequests;
+  }
+}
+
+
+// NEW: Get actual breakdown metrics from database (current month)
+async getMetricsFromDB() {
+  if (!supabase) {
+    return { educational: 0, safety: 0, search: 0 };
+  }
+
+  try {
+    // Get current month summary with breakdown
+    const { data: summary, error } = await supabase
+      .from('monthly_summaries')
+      .select('requests_by_type')
+      .eq('month_year', this.currentMonth)
+      .single();
+
+    if (error || !summary) {
+      return { educational: 0, safety: 0, search: 0 };
+    }
+
+    const requestsByType = summary.requests_by_type || {};
+    
+    // Calculate metrics from the actual categories stored in database
+    const metrics = {
+      educational: (requestsByType['Educational Overview'] || 0) + 
+                   (requestsByType['Educational Annotations'] || 0),
+      safety: requestsByType['Safety Data'] || 0,
+      search: (requestsByType['Autocomplete'] || 0) + 
+              (requestsByType['Name Search'] || 0) + 
+              (requestsByType['CID Lookup'] || 0) + 
+              (requestsByType['Formula Search'] || 0) + 
+              (requestsByType['SMILES Search'] || 0)
+    };
+
+    metrics.total = Object.values(requestsByType).reduce((sum, count) => sum + count, 0);
+    
+    return metrics;
+  } catch (error) {
+    console.error('❌ Error fetching metrics from database:', error);
+    return { educational: 0, safety: 0, search: 0 };
+  }
+}
+
+// NEW: Refresh cache totals from database
+async refreshTotalsFromDB() {
+  if (!supabase) return;
+
+  try {
+    const totalRequests = await this.getTotalRequestsFromDB();
+    
+    // Update cache with database totals
+    this.cache.totalRequests = totalRequests;
+    
+    console.log(`📊 Refreshed totals from DB: ${totalRequests} total requests`);
+  } catch (error) {
+    console.error('❌ Error refreshing totals from database:', error);
+  }
+}
 
   // Get recent requests for display (from cache)
   getRecentRequests(limit = 20) {

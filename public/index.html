@@ -1185,12 +1185,15 @@ DOI: <a href="https://doi.org/10.1186/1758-2946-3-32" target="_blank">10.1186/17
             try {
                 const data = JSON.parse(event.data);
                 
-                if (data.type === 'initial') {
+                if (data.type === 'initial' || data.type === 'update') {
                     updateAnalytics(data.analytics);
                     updateRecentRequests(data.recentRequests);
-                } else if (data.type === 'update') {
-                    updateAnalytics(data.analytics);
-                    updateRecentRequests(data.recentRequests);
+                    
+                    // FIXED: Store metrics globally for use in updateEducationalMetrics
+                    if (data.metrics) {
+                        window.currentMetrics = data.metrics;
+                        updateEducationalMetrics();
+                    }
                 }
             } catch (error) {
                 console.error('Error parsing analytics data:', error);
@@ -1211,30 +1214,21 @@ DOI: <a href="https://doi.org/10.1186/1758-2946-3-32" target="_blank">10.1186/17
         }
         
         function updateAnalytics(analytics) {
-            analyticsData.totalRequests = analytics.totalRequests;
-            
-            // Update main stats
-            document.getElementById('totalRequests').textContent = analytics.totalRequests.toLocaleString();
-            document.getElementById('heroTotalRequests').textContent = analytics.totalRequests.toLocaleString();
-            
-            // Calculate derived metrics from recent requests
-            updateEducationalMetrics();
-        }
+    analyticsData.totalRequests = analytics.totalRequests;
+    
+    // FIXED: Update main stats with database totals
+    document.getElementById('totalRequests').textContent = analytics.totalRequests.toLocaleString();
+    document.getElementById('heroTotalRequests').textContent = analytics.totalRequests.toLocaleString();
+}
         
         function updateEducationalMetrics() {
-            const safetyCount = analyticsData.recentRequests.filter(r => 
-                r.type && (r.type.toLowerCase().includes('safety') || r.endpoint.includes('safety'))).length;
-                
-            const educationalCount = analyticsData.recentRequests.filter(r => 
-                r.type && (r.type.toLowerCase().includes('educational') || r.endpoint.includes('educational'))).length;
-                
-            const searchCount = analyticsData.recentRequests.filter(r => 
-                r.type && (r.type.toLowerCase().includes('search') || r.type.toLowerCase().includes('autocomplete'))).length;
-            
-            document.getElementById('educationalCount').textContent = educationalCount;
-            document.getElementById('safetyCount').textContent = safetyCount;
-            document.getElementById('searchCount').textContent = searchCount;
-        }
+    // FIXED: Use metrics from database instead of calculating from recent requests
+    if (window.currentMetrics) {
+        document.getElementById('educationalCount').textContent = window.currentMetrics.educational || 0;
+        document.getElementById('safetyCount').textContent = window.currentMetrics.safety || 0;
+        document.getElementById('searchCount').textContent = window.currentMetrics.search || 0;
+    }
+}
         
         function updateRecentRequests(requests) {
             analyticsData.recentRequests = requests || [];

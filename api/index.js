@@ -152,40 +152,39 @@ app.get('/api/docs', (req, res) => {
 
 
 // 📊 IMPROVED: Analytics endpoints with better error handling
+// 📊 FIXED: Analytics endpoints with actual database totals
 app.get('/api/analytics', async (req, res) => {
   try {
     console.log('📊 Analytics endpoint called');
     
-    const summary = analyticsDB.getAnalyticsSummary();
-    console.log(`📊 Summary from cache: ${summary.totalRequests} requests`);
+    // FIXED: Get actual totals from database
+    const totalRequests = await analyticsDB.getTotalRequestsFromDB();
+    const metricsFromDB = await analyticsDB.getMetricsFromDB();
     
-    // Get fresh data from database (50 requests)
+    // Get fresh recent requests (50 requests for activity feed)
     const recentRequests = await analyticsDB.getRecentRequestsFromDB(50);
-    console.log(`📊 Recent requests from DB: ${recentRequests.length} items`);
     
-    // Calculate metrics from actual request data
-    const metrics = analyticsDB.calculateMetricsFromRequests(recentRequests);
-    console.log('📊 Calculated metrics:', metrics);
+    console.log(`📊 Database totals: ${totalRequests} total, Educational: ${metricsFromDB.educational}, Safety: ${metricsFromDB.safety}, Search: ${metricsFromDB.search}`);
     
+    // Build summary with database totals
+    const summary = analyticsDB.getAnalyticsSummary();
     const responseData = {
       ...summary,
+      totalRequests: totalRequests, // FIXED: Use database total
       recentRequests: recentRequests,
-      metrics: metrics,
+      metrics: metricsFromDB, // FIXED: Use database metrics
       database_connected: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
       tracking_mode: analyticsDB.shouldTrackRequest ? 'selective' : 'disabled',
       environment: process.env.NODE_ENV || 'development',
       debug_info: {
         cache_total: summary.totalRequests,
+        db_total: totalRequests,
         db_requests_count: recentRequests.length,
         supabase_configured: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY)
       }
     };
     
-    console.log('📊 Sending analytics response:', {
-      totalRequests: responseData.totalRequests,
-      recentCount: responseData.recentRequests.length,
-      dbConnected: responseData.database_connected
-    });
+    console.log('📊 Sending analytics response with database totals');
     
     res.json(responseData);
   } catch (error) {
@@ -199,25 +198,34 @@ app.get('/api/analytics', async (req, res) => {
 });
 
 // 📊 UPDATED: Server-Sent Events for real-time updates (every 30 seconds, 50 requests)
+// 📊 FIXED: Server-Sent Events with database totals (every 30 seconds)
 app.get('/api/analytics/stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  // Send initial data
+  // Send analytics update with database totals
   const sendAnalyticsUpdate = async () => {
     try {
-      const summary = analyticsDB.getAnalyticsSummary();
+      // FIXED: Get actual totals from database every 30 seconds
+      const totalRequests = await analyticsDB.getTotalRequestsFromDB();
+      const metricsFromDB = await analyticsDB.getMetricsFromDB();
       const recentRequests = await analyticsDB.getRecentRequestsFromDB(50);
-      const metrics = analyticsDB.calculateMetricsFromRequests(recentRequests);
+      
+      const summary = analyticsDB.getAnalyticsSummary();
       
       res.write(`data: ${JSON.stringify({
         type: 'update',
-        analytics: summary,
+        analytics: {
+          ...summary,
+          totalRequests: totalRequests // FIXED: Use database total
+        },
         recentRequests: recentRequests,
-        metrics: metrics
+        metrics: metricsFromDB // FIXED: Use database metrics
       })}\n\n`);
+      
+      console.log(`📊 SSE Update: ${totalRequests} total, Educational: ${metricsFromDB.educational}, Safety: ${metricsFromDB.safety}`);
     } catch (error) {
       console.error('❌ SSE analytics error:', error);
     }
@@ -226,7 +234,7 @@ app.get('/api/analytics/stream', (req, res) => {
   // Send initial data immediately
   sendAnalyticsUpdate();
 
-  // Send updates every 30 seconds
+  // FIXED: Send updates every 30 seconds with fresh database totals
   const interval = setInterval(() => {
     sendAnalyticsUpdate();
   }, 30000);

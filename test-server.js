@@ -7,7 +7,7 @@ const fetch = require('node-fetch');
 // Configuration for different environments
 const environments = {
   local: 'http://localhost:3001',
-  production: 'http://molexa-api.vercel.app'
+  production: 'http://localhost:3001'
 };
 
 // Default to production for testing deployed version
