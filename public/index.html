@@ -763,36 +763,6 @@
                             <div class="card endpoint-card h-100">
                                 <div class="card-body">
                                     <h5 class="card-title">
-                                        <span class="badge bg-info method-badge me-2">GET</span>
-                                        Analytics Stream
-                                    </h5>
-                                    <div class="code-block">
-                                        <code>GET /api/analytics/stream</code>
-                                    </div>
-                                    <p class="mt-3">Server-Sent Events stream for real-time analytics updates.</p>
-                                    <small class="text-muted">Live updates every 30 seconds with new request notifications.</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-6">
-                            <div class="card endpoint-card h-100">
-                                <div class="card-body">
-                                    <h5 class="card-title">
-                                        <span class="badge bg-primary method-badge me-2">GET</span>
-                                        Live Dashboard
-                                    </h5>
-                                    <div class="code-block">
-                                        <code>GET /api/dashboard</code>
-                                    </div>
-                                    <p class="mt-3">Interactive HTML dashboard with real-time analytics visualization.</p>
-                                    <small class="text-muted">Complete analytics interface with live request tracking and usage statistics.</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-6">
-                            <div class="card endpoint-card h-100">
-                                <div class="card-body">
-                                    <h5 class="card-title">
                                         <span class="badge bg-secondary method-badge me-2">GET</span>
                                         Monthly Reports
                                     </h5>
@@ -856,28 +826,6 @@ console.log(`Synonyms: ${data.synonyms.join(', ')}`);</code></pre>
 const data = await response.json();
 console.log('Suggestions:', data.suggestions);
 // Output: ["caffeine", "caffeic acid", ...]</code></pre>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-6">
-                    <div class="card h-100">
-                        <div class="card-header bg-success text-white">
-                            <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Live Analytics</h5>
-                        </div>
-                        <div class="card-body">
-                            <h6>Monitor API usage in real-time:</h6>
-                            <div class="code-block">
-                                <code>GET /api/analytics/stream</code>
-                            </div>
-                            <div class="mt-3">
-                                <strong>JavaScript Example:</strong>
-                                <pre class="bg-light p-2 rounded mt-2"><code>const eventSource = new EventSource('/api/analytics/stream');
-eventSource.onmessage = function(event) {
-  const data = JSON.parse(event.data);
-  console.log('Analytics update:', data);
-};</code></pre>
                             </div>
                         </div>
                     </div>
