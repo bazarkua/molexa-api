@@ -121,10 +121,7 @@ app.use('/api/autocomplete', limiter);
 //   }
 // });
 
-// Enhanced analytics endpoints for better polling support
-// Add these modifications to your index.js file
-
-// 📊 UPDATED: Analytics endpoint with timestamp for efficient polling
+// 📊 UPDATED: Analytics endpoints with database support
 app.get('/api/analytics', async (req, res) => {
   try {
     const summary = analyticsDB.getAnalyticsSummary();
@@ -136,153 +133,17 @@ app.get('/api/analytics', async (req, res) => {
       type: req.request_type || req.type || 'API Request' // Ensure 'type' field exists
     }));
     
-    // Add timestamp for polling efficiency
-    const responseData = {
+    res.json({
       ...summary,
       recentRequests: mappedRecentRequests,
       database_connected: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
-      tracking_mode: analyticsDB.shouldTrackRequest ? 'selective' : 'disabled',
-      last_updated: new Date().toISOString(),
-      polling_interval: 30000, // Suggest 30 second polling
-      connection_mode: 'polling' // Indicate this is designed for polling
-    };
-    
-    res.json(responseData);
+      tracking_mode: analyticsDB.shouldTrackRequest ? 'selective' : 'disabled'
+    });
   } catch (error) {
     console.error('❌ Analytics endpoint error:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch analytics',
-      last_updated: new Date().toISOString(),
-      connection_mode: 'error'
-    });
+    res.status(500).json({ error: 'Failed to fetch analytics' });
   }
 });
-
-// 📊 NEW: Lightweight analytics endpoint for frequent polling
-app.get('/api/analytics/summary', async (req, res) => {
-  try {
-    const summary = analyticsDB.getAnalyticsSummary();
-    
-    // Minimal response for frequent polling
-    res.json({
-      totalRequests: summary.totalRequests,
-      recentRequestsCount: summary.recentRequestsCount,
-      last_updated: new Date().toISOString(),
-      uptime: summary.uptimeMinutes
-    });
-  } catch (error) {
-    console.error('❌ Analytics summary error:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch analytics summary',
-      last_updated: new Date().toISOString()
-    });
-  }
-});
-
-// 📊 MODIFIED: Keep the stream endpoint but add fallback headers
-app.get('/api/analytics/stream', (req, res) => {
-  // Check if this is likely a polling request vs EventSource
-  const isPollingRequest = req.headers.accept && 
-    req.headers.accept.includes('application/json') && 
-    !req.headers.accept.includes('text/event-stream');
-  
-  if (isPollingRequest) {
-    // Redirect polling requests to the regular analytics endpoint
-    return res.redirect('/api/analytics');
-  }
-  
-  // Original EventSource implementation for browsers that support it
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
-
-  // Send initial data (mapped for frontend)
-  const summary = analyticsDB.getAnalyticsSummary();
-  const recentRequests = analyticsDB.getRecentRequests(10);
-  const mappedRecentRequests = recentRequests.map(r => ({
-    ...r,
-    type: r.request_type || r.type || 'API Request'
-  }));
-  
-  res.write(`data: ${JSON.stringify({
-    type: 'initial',
-    analytics: summary,
-    recentRequests: mappedRecentRequests,
-    connection_mode: 'stream'
-  })}\n\n`);
-
-  // Send heartbeat every 25 seconds (before Vercel's 30-second timeout)
-  const heartbeatInterval = setInterval(() => {
-    try {
-      res.write(`data: ${JSON.stringify({
-        type: 'heartbeat',
-        timestamp: new Date().toISOString()
-      })}\n\n`);
-    } catch (error) {
-      clearInterval(heartbeatInterval);
-      clearInterval(updateInterval);
-    }
-  }, 25000);
-
-  // Send updates every 30 seconds
-  const updateInterval = setInterval(() => {
-    try {
-      const currentSummary = analyticsDB.getAnalyticsSummary();
-      const currentRequests = analyticsDB.getRecentRequests(5);
-      const mappedCurrentRequests = currentRequests.map(r => ({
-        ...r,
-        type: r.request_type || r.type || 'API Request'
-      }));
-      
-      res.write(`data: ${JSON.stringify({
-        type: 'update',
-        analytics: currentSummary,
-        recentRequests: mappedCurrentRequests
-      })}\n\n`);
-    } catch (error) {
-      clearInterval(heartbeatInterval);
-      clearInterval(updateInterval);
-    }
-  }, 30000);
-
-  req.on('close', () => {
-    clearInterval(heartbeatInterval);
-    clearInterval(updateInterval);
-  });
-  
-  // Auto-close after 5 minutes to prevent Vercel timeout issues
-  setTimeout(() => {
-    try {
-      res.write(`data: ${JSON.stringify({
-        type: 'close',
-        message: 'Connection closed automatically',
-        reason: 'timeout_prevention'
-      })}\n\n`);
-      res.end();
-    } catch (error) {
-      // Connection already closed
-    }
-    clearInterval(heartbeatInterval);
-    clearInterval(updateInterval);
-  }, 300000); // 5 minutes
-});
-
-// 📊 NEW: Analytics health check
-app.get('/api/analytics/health', (req, res) => {
-  const summary = analyticsDB.getAnalyticsSummary();
-  res.json({
-    status: 'healthy',
-    analytics_enabled: !!analyticsDB.shouldTrackRequest,
-    database_connected: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
-    total_requests: summary.totalRequests,
-    uptime_minutes: summary.uptimeMinutes,
-    recommended_mode: 'polling',
-    last_updated: new Date().toISOString()
-  });
-});
-
 
 // NEW: Monthly analytics reports
 app.get('/api/analytics/monthly/:monthYear?', async (req, res) => {
@@ -350,6 +211,53 @@ app.post('/api/analytics/archive/:monthYear', async (req, res) => {
   }
 });
 
+// 📊 UPDATED: Server-Sent Events for real-time updates
+app.get('/api/analytics/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+    // Send initial data (mapped for frontend)
+  const summary = analyticsDB.getAnalyticsSummary();
+  const recentRequests = analyticsDB.getRecentRequests(10);
+  const mappedRecentRequests = recentRequests.map(r => ({
+    ...r,
+    type: r.request_type || r.type || 'API Request'
+  }));
+  
+  res.write(`data: ${JSON.stringify({
+    type: 'initial',
+    analytics: summary,
+    recentRequests: mappedRecentRequests
+  })}\n\n`);
+
+  
+
+  // Send updates every 30 seconds
+  const interval = setInterval(() => {
+    try {
+      const currentSummary = analyticsDB.getAnalyticsSummary();
+      const currentRequests = analyticsDB.getRecentRequests(5);
+      const mappedCurrentRequests = currentRequests.map(r => ({
+        ...r,
+        type: r.request_type || r.type || 'API Request'
+      }));
+      
+      res.write(`data: ${JSON.stringify({
+        type: 'update',
+        analytics: currentSummary,
+        recentRequests: mappedCurrentRequests
+      })}\n\n`);
+    } catch (error) {
+      clearInterval(interval);
+    }
+  }, 30000);
+
+  req.on('close', () => {
+    clearInterval(interval);
+  });
+});
 
 // Analytics Dashboard HTML page
 app.get('/api/dashboard', (req, res) => {
@@ -463,7 +371,6 @@ app.get('/api/json/docs', (req, res) => {
 // 🔧 FIXED: Updated to use fastformula instead of deprecated formula endpoint
 // Enhanced compound data endpoint with educational properties
 // 🔧 FIXED: Updated to properly handle fastformula endpoint
-// Fixed educational endpoint - resolves encodedIdentifier scope issue
 app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
   try {
     const { identifier } = req.params;
@@ -481,13 +388,12 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
     console.log(`🎓 Fetching educational data for: ${identifier} (type: ${identifierType})`);
     
     let cid = identifier;
-    let encodedIdentifier = identifier; // 🔧 FIX: Declare outside the if block
-    
     if (identifierType !== 'cid') {
-      encodedIdentifier = encodeURIComponent(identifier.toLowerCase().trim());
+      const encodedIdentifier = encodeURIComponent(identifier.toLowerCase().trim());
       console.log(`🔍 Searching for CID using ${identifierType}: ${encodedIdentifier}`);
       
-      // Use the identifierType directly - fastformula is already the correct endpoint
+      // 🔧 FIX: Use the identifierType directly - fastformula is already the correct endpoint
+      // No need to map it back to 'formula' since fastformula is what we want
       let pubchemSearchType = identifierType;
       console.log(`🌐 Using PubChem endpoint: compound/${pubchemSearchType}/${encodedIdentifier}/cids/JSON`);
       
