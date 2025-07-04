@@ -154,6 +154,9 @@ npm run validate
 
 I welcome contributions, especially from educators who know what students need. Feel free to open issues for feature requests or submit PRs for improvements.
 
+## Special Thanks
+This project was developed with invaluable assistance from Claude AI by Anthropic.
+
 ## Citation
 
 If you use this API in research or educational materials, please cite:
