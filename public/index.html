@@ -791,12 +791,6 @@
         let analyticsData = {
             totalRequests: 0,
             recentRequests: [],
-            educationalRequests: 0,
-            safetyRequests: 0,
-            propertiesRequests: 0,
-            pharmacologyRequests: 0,
-            searchRequests: 0,
-            imageRequests: 0
         };
         
         // Connect to SSE stream for real-time updates
@@ -852,10 +846,9 @@
             // Update main stats
             document.getElementById('totalRequests').textContent = analytics.totalRequests;
             document.getElementById('heroTotalRequests').textContent = analytics.totalRequests;
-            document.getElementById('requestsThisHour').textContent = analytics.requestsThisHour || 0;
             
-            // Update educational impact metrics
-            updateEducationalMetrics();
+            // // Update educational impact metrics
+            // updateEducationalMetrics();
             
             // Update top endpoints
             if (analytics.topEndpoints) {
@@ -863,38 +856,34 @@
             }
         }
         
-        function updateEducationalMetrics() {
-            const safetyCount = analyticsData.recentRequests.filter(r => 
-                r.type.toLowerCase().includes('safety') || 
-                r.endpoint.includes('safety')).length;
+        // function updateEducationalMetrics() {
+        //     const safetyCount = analyticsData.recentRequests.filter(r => 
+        //         r.type.toLowerCase().includes('safety') || 
+        //         r.endpoint.includes('safety')).length;
                 
-            const educationalCount = analyticsData.recentRequests.filter(r => 
-                r.type.toLowerCase().includes('educational') || 
-                r.endpoint.includes('educational')).length;
+        //     const educationalCount = analyticsData.recentRequests.filter(r => 
+        //         r.type.toLowerCase().includes('educational') || 
+        //         r.endpoint.includes('educational')).length;
                 
-            const propertiesCount = analyticsData.recentRequests.filter(r => 
-                r.type.toLowerCase().includes('properties') || 
-                r.endpoint.includes('properties')).length;
+        //     const propertiesCount = analyticsData.recentRequests.filter(r => 
+        //         r.type.toLowerCase().includes('properties') || 
+        //         r.endpoint.includes('properties')).length;
                 
-            const pharmacologyCount = analyticsData.recentRequests.filter(r => 
-                r.type.toLowerCase().includes('pharmacology') || 
-                r.endpoint.includes('pharmacology')).length;
+        //     const pharmacologyCount = analyticsData.recentRequests.filter(r => 
+        //         r.type.toLowerCase().includes('pharmacology') || 
+        //         r.endpoint.includes('pharmacology')).length;
                 
-            const searchCount = analyticsData.recentRequests.filter(r => 
-                r.type.toLowerCase().includes('search') || 
-                r.type.toLowerCase().includes('autocomplete')).length;
+        //     const searchCount = analyticsData.recentRequests.filter(r => 
+        //         r.type.toLowerCase().includes('search') || 
+        //         r.type.toLowerCase().includes('autocomplete')).length;
                 
-            const imageCount = analyticsData.recentRequests.filter(r => 
-                r.type.toLowerCase().includes('image') || 
-                r.endpoint.includes('.PNG')).length;
+        //     const imageCount = analyticsData.recentRequests.filter(r => 
+        //         r.type.toLowerCase().includes('image') || 
+        //         r.endpoint.includes('.PNG')).length;
             
-            document.getElementById('safetyRequests').textContent = safetyCount;
-            document.getElementById('educationalRequests').textContent = educationalCount;
-            document.getElementById('propertiesRequests').textContent = propertiesCount;
-            document.getElementById('pharmacologyRequests').textContent = pharmacologyCount;
-            document.getElementById('searchRequests').textContent = searchCount;
-            document.getElementById('imageRequests').textContent = imageCount;
-        }
+           
+            
+        // }
         
         function updateTopEndpoints(topEndpoints) {
             const container = document.getElementById('topEndpoints');
@@ -961,7 +950,6 @@
                 createRequestElement(request).outerHTML
             ).join('');
             
-            updateEducationalMetrics();
         }
         
         function createRequestElement(request, isNew = false) {
