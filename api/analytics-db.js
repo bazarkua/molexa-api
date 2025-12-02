@@ -401,39 +401,47 @@ class AnalyticsDB {
   }
 
 
-  // NEW: Get actual breakdown metrics from database (current month)
+  // NEW: Get actual breakdown metrics from database (ALL TIME)
   async getMetricsFromDB() {
     if (!supabase) {
       return { educational: 0, safety: 0, search: 0 };
     }
 
     try {
-      // Get current month summary with breakdown
-      const { data: summary, error } = await supabase
+      // Get all monthly summaries to calculate all-time metrics
+      const { data: summaries, error } = await supabase
         .from('monthly_summaries')
-        .select('requests_by_type')
-        .eq('month_year', this.currentMonth)
-        .single();
+        .select('requests_by_type');
 
-      if (error || !summary) {
+      if (error || !summaries) {
         return { educational: 0, safety: 0, search: 0 };
       }
 
-      const requestsByType = summary.requests_by_type || {};
+      // Aggregate counts across all months
+      const aggregatedTypes = {};
 
-      // Calculate metrics from the actual categories stored in database
+      summaries.forEach(summary => {
+        const types = summary.requests_by_type || {};
+        Object.entries(types).forEach(([type, count]) => {
+          aggregatedTypes[type] = (aggregatedTypes[type] || 0) + (count || 0);
+        });
+      });
+
+      // Calculate metrics from the aggregated categories
       const metrics = {
-        educational: (requestsByType['Educational Overview'] || 0) +
-          (requestsByType['Educational Annotations'] || 0),
-        safety: requestsByType['Safety Data'] || 0,
-        search: (requestsByType['Autocomplete'] || 0) +
-          (requestsByType['Name Search'] || 0) +
-          (requestsByType['CID Lookup'] || 0) +
-          (requestsByType['Formula Search'] || 0) +
-          (requestsByType['SMILES Search'] || 0)
+        educational: (aggregatedTypes['Educational Overview'] || 0) +
+          (aggregatedTypes['Educational Annotations'] || 0) +
+          (aggregatedTypes['Pharmacology'] || 0) +
+          (aggregatedTypes['Properties'] || 0),
+        safety: aggregatedTypes['Safety Data'] || 0,
+        search: (aggregatedTypes['Autocomplete'] || 0) +
+          (aggregatedTypes['Name Search'] || 0) +
+          (aggregatedTypes['CID Lookup'] || 0) +
+          (aggregatedTypes['Formula Search'] || 0) +
+          (aggregatedTypes['SMILES Search'] || 0)
       };
 
-      metrics.total = Object.values(requestsByType).reduce((sum, count) => sum + count, 0);
+      metrics.total = Object.values(aggregatedTypes).reduce((sum, count) => sum + count, 0);
 
       return metrics;
     } catch (error) {
