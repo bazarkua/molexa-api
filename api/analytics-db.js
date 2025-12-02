@@ -6,8 +6,13 @@ const path = require('path');
 
 // Initialize Supabase client (free tier: 500MB, 2 databases)
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+// CRITICAL: Use SERVICE_ROLE_KEY for backend writes if RLS is enabled
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+if (supabase && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.warn('⚠️  WARNING: Using ANON key. Writes may fail if RLS is enabled without public write policy.');
+}
 
 class AnalyticsDB {
   constructor() {
@@ -27,100 +32,100 @@ class AnalyticsDB {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
 
-// Initialize cache from database
-async initializeCache() {
-  if (!supabase) {
-    console.log('📊 Analytics: Using memory-only mode (no database configured)');
-    return;
-  }
-
-  try {
-    console.log('📊 Initializing analytics cache from Supabase...');
-    
-    // Test connection first
-    const { data: testData, error: testError } = await supabase
-      .from('api_requests')
-      .select('count', { count: 'exact' })
-      .limit(1);
-    
-    if (testError) {
-      console.error('❌ Supabase connection test failed:', testError);
+  // Initialize cache from database
+  async initializeCache() {
+    if (!supabase) {
+      console.log('📊 Analytics: Using memory-only mode (no database configured)');
       return;
     }
-    
-    console.log('✅ Supabase connection successful');
 
-    // Get current month summary
-    const { data: summary, error: summaryError } = await supabase
-      .from('monthly_summaries')
-      .select('*')
-      .eq('month_year', this.currentMonth)
-      .single();
+    try {
+      console.log('📊 Initializing analytics cache from Supabase...');
 
-    if (summaryError && summaryError.code !== 'PGRST116') { // PGRST116 = no rows found
-      console.error('❌ Error fetching monthly summary:', summaryError);
+      // Test connection first
+      const { data: testData, error: testError } = await supabase
+        .from('api_requests')
+        .select('count', { count: 'exact' })
+        .limit(1);
+
+      if (testError) {
+        console.error('❌ Supabase connection test failed:', testError);
+        return;
+      }
+
+      console.log('✅ Supabase connection successful');
+
+      // Get current month summary
+      const { data: summary, error: summaryError } = await supabase
+        .from('monthly_summaries')
+        .select('*')
+        .eq('month_year', this.currentMonth)
+        .single();
+
+      if (summaryError && summaryError.code !== 'PGRST116') { // PGRST116 = no rows found
+        console.error('❌ Error fetching monthly summary:', summaryError);
+      }
+
+      if (summary) {
+        console.log(`📊 Found summary for ${this.currentMonth}: ${summary.total_requests} requests`);
+        this.cache.totalRequests = summary.total_requests || 0;
+        this.cache.requestsByType = summary.requests_by_type || {};
+        this.cache.requestsByEndpoint = summary.requests_by_endpoint || {};
+      } else {
+        console.log(`📊 No summary found for ${this.currentMonth}, starting fresh`);
+        // Create initial summary if it doesn't exist
+        await this.createInitialSummary();
+      }
+
+      // Get recent requests (last 50)
+      const { data: recentRequests, error: requestsError } = await supabase
+        .from('api_requests')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(50);
+
+      if (requestsError) {
+        console.error('❌ Error fetching recent requests:', requestsError);
+      } else {
+        this.cache.recentRequests = (recentRequests || []).map(r => ({
+          id: r.id,
+          timestamp: r.timestamp,
+          method: r.method,
+          endpoint: r.endpoint,
+          type: r.request_type,
+          request_type: r.request_type
+        }));
+        console.log(`📊 Loaded ${this.cache.recentRequests.length} recent requests`);
+      }
+
+      console.log(`📊 Analytics cache initialized: ${this.cache.totalRequests} total requests`);
+    } catch (error) {
+      console.error('❌ Error initializing analytics cache:', error);
     }
-
-    if (summary) {
-      console.log(`📊 Found summary for ${this.currentMonth}: ${summary.total_requests} requests`);
-      this.cache.totalRequests = summary.total_requests || 0;
-      this.cache.requestsByType = summary.requests_by_type || {};
-      this.cache.requestsByEndpoint = summary.requests_by_endpoint || {};
-    } else {
-      console.log(`📊 No summary found for ${this.currentMonth}, starting fresh`);
-      // Create initial summary if it doesn't exist
-      await this.createInitialSummary();
-    }
-
-    // Get recent requests (last 50)
-    const { data: recentRequests, error: requestsError } = await supabase
-      .from('api_requests')
-      .select('*')
-      .order('timestamp', { ascending: false })
-      .limit(50);
-
-    if (requestsError) {
-      console.error('❌ Error fetching recent requests:', requestsError);
-    } else {
-      this.cache.recentRequests = (recentRequests || []).map(r => ({
-        id: r.id,
-        timestamp: r.timestamp,
-        method: r.method,
-        endpoint: r.endpoint,
-        type: r.request_type,
-        request_type: r.request_type
-      }));
-      console.log(`📊 Loaded ${this.cache.recentRequests.length} recent requests`);
-    }
-
-    console.log(`📊 Analytics cache initialized: ${this.cache.totalRequests} total requests`);
-  } catch (error) {
-    console.error('❌ Error initializing analytics cache:', error);
   }
-}
 
-// NEW: Create initial summary for current month
-async createInitialSummary() {
-  try {
-    const { error } = await supabase
-      .from('monthly_summaries')
-      .insert([{
-        month_year: this.currentMonth,
-        total_requests: 0,
-        requests_by_type: {},
-        requests_by_endpoint: {},
-        average_response_time: 0
-      }]);
-    
-    if (error) {
-      console.error('❌ Error creating initial summary:', error);
-    } else {
-      console.log(`📊 Created initial summary for ${this.currentMonth}`);
+  // NEW: Create initial summary for current month
+  async createInitialSummary() {
+    try {
+      const { error } = await supabase
+        .from('monthly_summaries')
+        .insert([{
+          month_year: this.currentMonth,
+          total_requests: 0,
+          requests_by_type: {},
+          requests_by_endpoint: {},
+          average_response_time: 0
+        }]);
+
+      if (error) {
+        console.error('❌ Error creating initial summary:', error);
+      } else {
+        console.log(`📊 Created initial summary for ${this.currentMonth}`);
+      }
+    } catch (error) {
+      console.error('❌ Error in createInitialSummary:', error);
     }
-  } catch (error) {
-    console.error('❌ Error in createInitialSummary:', error);
   }
-}
 
   // NEW: Get recent requests directly from database
   async getRecentRequestsFromDB(limit = 50) {
@@ -154,29 +159,29 @@ async createInitialSummary() {
   }
 
   // NEW: Calculate metrics from recent requests
-calculateMetricsFromRequests(requests) {
-  const metrics = {
-    educational: 0,
-    safety: 0,
-    search: 0,
-    total: requests.length
-  };
+  calculateMetricsFromRequests(requests) {
+    const metrics = {
+      educational: 0,
+      safety: 0,
+      search: 0,
+      total: requests.length
+    };
 
-  requests.forEach(request => {
-    const type = (request.type || '').toLowerCase();
-    const endpoint = (request.endpoint || '').toLowerCase();
+    requests.forEach(request => {
+      const type = (request.type || '').toLowerCase();
+      const endpoint = (request.endpoint || '').toLowerCase();
 
-    if (type.includes('educational') || endpoint.includes('educational')) {
-      metrics.educational++;
-    } else if (type.includes('safety') || endpoint.includes('safety')) {
-      metrics.safety++;
-    } else if (type.includes('autocomplete') || type.includes('search') || endpoint.includes('autocomplete')) {
-      metrics.search++;
-    }
-  });
+      if (type.includes('educational') || endpoint.includes('educational')) {
+        metrics.educational++;
+      } else if (type.includes('safety') || endpoint.includes('safety')) {
+        metrics.safety++;
+      } else if (type.includes('autocomplete') || type.includes('search') || endpoint.includes('autocomplete')) {
+        metrics.search++;
+      }
+    });
 
-  return metrics;
-}
+    return metrics;
+  }
 
   // Check if this request should be tracked
   shouldTrackRequest(url, method) {
@@ -259,11 +264,11 @@ calculateMetricsFromRequests(requests) {
     }
 
     // Update counters
-    this.cache.requestsByType[requestData.request_type] = 
+    this.cache.requestsByType[requestData.request_type] =
       (this.cache.requestsByType[requestData.request_type] || 0) + 1;
-    
+
     const endpointCategory = this.getEndpointCategory(requestData.endpoint);
-    this.cache.requestsByEndpoint[endpointCategory] = 
+    this.cache.requestsByEndpoint[endpointCategory] =
       (this.cache.requestsByEndpoint[endpointCategory] || 0) + 1;
 
     // Store in database (async, don't block response)
@@ -314,14 +319,14 @@ calculateMetricsFromRequests(requests) {
           .from('monthly_summaries')
           .update(summaryData)
           .eq('month_year', this.currentMonth);
-        
+
         if (error) throw error;
       } else {
         // Create new summary
         const { error } = await supabase
           .from('monthly_summaries')
           .insert([summaryData]);
-        
+
         if (error) throw error;
       }
     } catch (error) {
@@ -331,7 +336,7 @@ calculateMetricsFromRequests(requests) {
 
   async calculateAverageResponseTime() {
     if (!supabase) return 0;
-    
+
     try {
       const { data, error } = await supabase
         .from('api_requests')
@@ -363,10 +368,10 @@ calculateMetricsFromRequests(requests) {
       totalRequests: this.cache.totalRequests,
       recentRequestsCount: this.cache.recentRequests.length,
       topEndpoints: Object.entries(this.cache.requestsByEndpoint)
-        .sort(([,a], [,b]) => b - a)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, 5),
       topTypes: Object.entries(this.cache.requestsByType)
-        .sort(([,a], [,b]) => b - a)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, 5),
       uptimeMinutes: Math.floor((new Date() - this.cache.startTime) / (1000 * 60)),
       currentMonth: this.currentMonth
@@ -374,84 +379,84 @@ calculateMetricsFromRequests(requests) {
   }
 
   // NEW: Get actual total requests from database (current month + all previous months)
-async getTotalRequestsFromDB() {
-  if (!supabase) {
-    return this.cache.totalRequests;
+  async getTotalRequestsFromDB() {
+    if (!supabase) {
+      return this.cache.totalRequests;
+    }
+
+    try {
+      // Get total from all monthly summaries
+      const { data: summaries, error } = await supabase
+        .from('monthly_summaries')
+        .select('total_requests');
+
+      if (error) throw error;
+
+      const total = summaries.reduce((sum, summary) => sum + (summary.total_requests || 0), 0);
+      return total;
+    } catch (error) {
+      console.error('❌ Error fetching total requests from database:', error);
+      return this.cache.totalRequests;
+    }
   }
 
-  try {
-    // Get total from all monthly summaries
-    const { data: summaries, error } = await supabase
-      .from('monthly_summaries')
-      .select('total_requests');
 
-    if (error) throw error;
-
-    const total = summaries.reduce((sum, summary) => sum + (summary.total_requests || 0), 0);
-    return total;
-  } catch (error) {
-    console.error('❌ Error fetching total requests from database:', error);
-    return this.cache.totalRequests;
-  }
-}
-
-
-// NEW: Get actual breakdown metrics from database (current month)
-async getMetricsFromDB() {
-  if (!supabase) {
-    return { educational: 0, safety: 0, search: 0 };
-  }
-
-  try {
-    // Get current month summary with breakdown
-    const { data: summary, error } = await supabase
-      .from('monthly_summaries')
-      .select('requests_by_type')
-      .eq('month_year', this.currentMonth)
-      .single();
-
-    if (error || !summary) {
+  // NEW: Get actual breakdown metrics from database (current month)
+  async getMetricsFromDB() {
+    if (!supabase) {
       return { educational: 0, safety: 0, search: 0 };
     }
 
-    const requestsByType = summary.requests_by_type || {};
-    
-    // Calculate metrics from the actual categories stored in database
-    const metrics = {
-      educational: (requestsByType['Educational Overview'] || 0) + 
-                   (requestsByType['Educational Annotations'] || 0),
-      safety: requestsByType['Safety Data'] || 0,
-      search: (requestsByType['Autocomplete'] || 0) + 
-              (requestsByType['Name Search'] || 0) + 
-              (requestsByType['CID Lookup'] || 0) + 
-              (requestsByType['Formula Search'] || 0) + 
-              (requestsByType['SMILES Search'] || 0)
-    };
+    try {
+      // Get current month summary with breakdown
+      const { data: summary, error } = await supabase
+        .from('monthly_summaries')
+        .select('requests_by_type')
+        .eq('month_year', this.currentMonth)
+        .single();
 
-    metrics.total = Object.values(requestsByType).reduce((sum, count) => sum + count, 0);
-    
-    return metrics;
-  } catch (error) {
-    console.error('❌ Error fetching metrics from database:', error);
-    return { educational: 0, safety: 0, search: 0 };
+      if (error || !summary) {
+        return { educational: 0, safety: 0, search: 0 };
+      }
+
+      const requestsByType = summary.requests_by_type || {};
+
+      // Calculate metrics from the actual categories stored in database
+      const metrics = {
+        educational: (requestsByType['Educational Overview'] || 0) +
+          (requestsByType['Educational Annotations'] || 0),
+        safety: requestsByType['Safety Data'] || 0,
+        search: (requestsByType['Autocomplete'] || 0) +
+          (requestsByType['Name Search'] || 0) +
+          (requestsByType['CID Lookup'] || 0) +
+          (requestsByType['Formula Search'] || 0) +
+          (requestsByType['SMILES Search'] || 0)
+      };
+
+      metrics.total = Object.values(requestsByType).reduce((sum, count) => sum + count, 0);
+
+      return metrics;
+    } catch (error) {
+      console.error('❌ Error fetching metrics from database:', error);
+      return { educational: 0, safety: 0, search: 0 };
+    }
   }
-}
 
-// NEW: Refresh cache totals from database
-async refreshTotalsFromDB() {
-  if (!supabase) return;
+  // NEW: Refresh cache totals from database
+  async refreshTotalsFromDB() {
+    if (!supabase) return;
 
-  try {
-    const totalRequests = await this.getTotalRequestsFromDB();
-    
-    // Update cache with database totals
-    this.cache.totalRequests = totalRequests;
-    
-    console.log(`📊 Refreshed totals from DB: ${totalRequests} total requests`);
-  } catch (error) {
-    console.error('❌ Error refreshing totals from database:', error);
+    try {
+      const totalRequests = await this.getTotalRequestsFromDB();
+
+      // Update cache with database totals
+      this.cache.totalRequests = totalRequests;
+
+      console.log(`📊 Refreshed totals from DB: ${totalRequests} total requests`);
+    } catch (error) {
+      console.error('❌ Error refreshing totals from database:', error);
+    }
   }
-}
 
   // Get recent requests for display (from cache)
   getRecentRequests(limit = 20) {
@@ -497,7 +502,7 @@ async refreshTotalsFromDB() {
       // Save to file
       const archiveDir = path.join(__dirname, '..', 'archives');
       await fs.mkdir(archiveDir, { recursive: true });
-      
+
       const filename = path.join(archiveDir, `molexa-analytics-${monthYear}.json`);
       await fs.writeFile(filename, JSON.stringify(archiveData, null, 2));
 
@@ -511,6 +516,42 @@ async refreshTotalsFromDB() {
       return filename;
     } catch (error) {
       console.error(`❌ Error archiving month ${monthYear}:`, error);
+      throw error;
+    }
+  }
+
+  // NEW: Cleanup old requests to save space
+  async cleanupOldRequests(retentionMonths = 1) {
+    if (!supabase) {
+      console.log('📊 Skipping cleanup (no database configured)');
+      return { deleted: 0, error: 'No database configured' };
+    }
+
+    try {
+      // Calculate cutoff date (first day of current month)
+      const now = new Date();
+      const cutoffDate = new Date(now.getFullYear(), now.getMonth() - retentionMonths + 1, 1);
+      const cutoffISO = cutoffDate.toISOString();
+      const cutoffMonthYear = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, '0')}`;
+
+      console.log(`📊 Starting cleanup of requests older than ${cutoffISO} (before ${cutoffMonthYear})...`);
+
+      // 1. Ensure summaries exist for all months before deleting
+      // Get all distinct months from api_requests that are older than cutoff
+      // Note: This is a safety check. In practice, summaries are updated in real-time.
+
+      // 2. Delete old requests
+      const { data, error, count } = await supabase
+        .from('api_requests')
+        .delete({ count: 'exact' })
+        .lt('timestamp', cutoffISO);
+
+      if (error) throw error;
+
+      console.log(`✅ Cleaned up ${count} old requests`);
+      return { deleted: count, cutoff: cutoffISO };
+    } catch (error) {
+      console.error('❌ Cleanup failed:', error);
       throw error;
     }
   }

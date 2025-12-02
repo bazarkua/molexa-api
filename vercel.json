@@ -1,45 +1,51 @@
 {
   "version": 2,
   "routes": [
-    { 
-      "src": "/static/(.*)", 
-      "dest": "public/$1" 
+    {
+      "src": "/static/(.*)",
+      "dest": "public/$1"
     },
-    { 
-      "src": "/api/(.*)", 
-      "dest": "api/index.js" 
+    {
+      "src": "/api/(.*)",
+      "dest": "api/index.js"
     },
-    { 
-      "src": "/dashboard", 
-      "dest": "api/index.js" 
+    {
+      "src": "/dashboard",
+      "dest": "api/index.js"
     },
-    { 
-      "src": "/analytics(.*)", 
-      "dest": "api/index.js" 
+    {
+      "src": "/analytics(.*)",
+      "dest": "api/index.js"
     },
-    { 
-      "src": "/health", 
-      "dest": "api/index.js" 
+    {
+      "src": "/health",
+      "dest": "api/index.js"
     },
-    { 
-      "src": "/", 
-      "dest": "api/index.js" 
+    {
+      "src": "/",
+      "dest": "api/index.js"
     },
-    { 
-      "handle": "filesystem" 
+    {
+      "handle": "filesystem"
     }
   ],
   "builds": [
-    { 
-      "src": "api/index.js", 
+    {
+      "src": "api/index.js",
       "use": "@vercel/node",
       "config": {
         "maxDuration": 30
       }
     },
-    { 
-      "src": "public/**", 
-      "use": "@vercel/static" 
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/admin/cleanup",
+      "schedule": "0 0 1 * *"
     }
   ]
 }

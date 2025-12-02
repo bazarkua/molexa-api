@@ -25,7 +25,7 @@ try {
   // Fallback to simple memory-based analytics
   analyticsDB = {
     shouldTrackRequest: () => false, // Don't track anything without DB
-    trackRequest: async () => {},
+    trackRequest: async () => { },
     getAnalyticsSummary: () => ({
       totalRequests: 0,
       recentRequestsCount: 0,
@@ -45,8 +45,8 @@ app.use(cors({
     'https://molexa.vercel.app',   // Vercel preview/live
     'https://molexa-api.vercel.app',
     'https://www.molexa.org',
-    'http://localhost:3000', 
-    'http://localhost:5173', 
+    'http://localhost:3000',
+    'http://localhost:5173',
     'http://127.0.0.1:5173',
     /^https:\/\/.*\.vercel\.app$/
   ],
@@ -71,13 +71,13 @@ const analyticsMiddleware = (req, res, next) => {
 
   // Track the request when response finishes
   const originalSend = res.send;
-  res.send = function(data) {
+  res.send = function (data) {
     const responseTime = Date.now() - startTime;
-    
+
     // Track the request (async, don't block response)
     analyticsDB.trackRequest(req, res, responseTime)
       .catch(error => console.error('❌ Analytics tracking error:', error));
-    
+
     // Call original send
     return originalSend.call(this, data);
   };
@@ -156,16 +156,16 @@ app.get('/api/docs', (req, res) => {
 app.get('/api/analytics', async (req, res) => {
   try {
     console.log('📊 Analytics endpoint called');
-    
+
     // FIXED: Get actual totals from database
     const totalRequests = await analyticsDB.getTotalRequestsFromDB();
     const metricsFromDB = await analyticsDB.getMetricsFromDB();
-    
+
     // Get fresh recent requests (50 requests for activity feed)
     const recentRequests = await analyticsDB.getRecentRequestsFromDB(50);
-    
+
     console.log(`📊 Database totals: ${totalRequests} total, Educational: ${metricsFromDB.educational}, Safety: ${metricsFromDB.safety}, Search: ${metricsFromDB.search}`);
-    
+
     // Build summary with database totals
     const summary = analyticsDB.getAnalyticsSummary();
     const responseData = {
@@ -183,13 +183,13 @@ app.get('/api/analytics', async (req, res) => {
         supabase_configured: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY)
       }
     };
-    
+
     console.log('📊 Sending analytics response with database totals');
-    
+
     res.json(responseData);
   } catch (error) {
     console.error('❌ Analytics endpoint error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch analytics',
       message: error.message,
       debug: process.env.NODE_ENV === 'development' ? error.stack : undefined
@@ -212,9 +212,9 @@ app.get('/api/analytics/stream', (req, res) => {
       const totalRequests = await analyticsDB.getTotalRequestsFromDB();
       const metricsFromDB = await analyticsDB.getMetricsFromDB();
       const recentRequests = await analyticsDB.getRecentRequestsFromDB(50);
-      
+
       const summary = analyticsDB.getAnalyticsSummary();
-      
+
       res.write(`data: ${JSON.stringify({
         type: 'update',
         analytics: {
@@ -224,7 +224,7 @@ app.get('/api/analytics/stream', (req, res) => {
         recentRequests: recentRequests,
         metrics: metricsFromDB // FIXED: Use database metrics
       })}\n\n`);
-      
+
       console.log(`📊 SSE Update: ${totalRequests} total, Educational: ${metricsFromDB.educational}, Safety: ${metricsFromDB.safety}`);
     } catch (error) {
       console.error('❌ SSE analytics error:', error);
@@ -252,9 +252,9 @@ app.get('/api/analytics/stream', (req, res) => {
 app.get('/api/analytics/monthly/:monthYear?', async (req, res) => {
   try {
     const monthYear = req.params.monthYear || new Date().toISOString().slice(0, 7);
-    
+
     if (!process.env.SUPABASE_URL) {
-      return res.status(503).json({ 
+      return res.status(503).json({
         error: 'Database not configured',
         message: 'Monthly reports require database connection'
       });
@@ -270,7 +270,7 @@ app.get('/api/analytics/monthly/:monthYear?', async (req, res) => {
       .single();
 
     if (error) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Month not found',
         message: `No data available for ${monthYear}`
       });
@@ -293,24 +293,47 @@ app.post('/api/analytics/archive/:monthYear', async (req, res) => {
 
   try {
     const { monthYear } = req.params;
-    
+
     if (!analyticsDB.archiveMonth) {
-      return res.status(503).json({ 
+      return res.status(503).json({
         error: 'Archive not available',
         message: 'Database analytics required for archival'
       });
     }
 
     const filename = await analyticsDB.archiveMonth(monthYear);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: `Month ${monthYear} archived successfully`,
       filename: filename
     });
   } catch (error) {
     console.error('❌ Archive error:', error);
     res.status(500).json({ error: 'Archive failed', message: error.message });
+  }
+});
+
+// NEW: Cleanup endpoint for Vercel Cron (admin only)
+app.delete('/api/admin/cleanup', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader !== `Bearer ${process.env.ADMIN_TOKEN}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    console.log('🧹 Starting scheduled cleanup...');
+    const result = await analyticsDB.cleanupOldRequests(1); // Keep 1 month
+
+    res.json({
+      success: true,
+      message: 'Cleanup completed',
+      deleted_count: result.deleted,
+      cutoff_date: result.cutoff
+    });
+  } catch (error) {
+    console.error('❌ Cleanup error:', error);
+    res.status(500).json({ error: 'Cleanup failed', message: error.message });
   }
 });
 
@@ -321,21 +344,21 @@ app.get('/api/analytics/stream', (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-    // Send initial data (mapped for frontend)
+  // Send initial data (mapped for frontend)
   const summary = analyticsDB.getAnalyticsSummary();
   const recentRequests = analyticsDB.getRecentRequests(10);
   const mappedRecentRequests = recentRequests.map(r => ({
     ...r,
     type: r.request_type || r.type || 'API Request'
   }));
-  
+
   res.write(`data: ${JSON.stringify({
     type: 'initial',
     analytics: summary,
     recentRequests: mappedRecentRequests
   })}\n\n`);
 
-  
+
 
   // Send updates every 30 seconds
   const interval = setInterval(() => {
@@ -346,7 +369,7 @@ app.get('/api/analytics/stream', (req, res) => {
         ...r,
         type: r.request_type || r.type || 'API Request'
       }));
-      
+
       res.write(`data: ${JSON.stringify({
         type: 'update',
         analytics: currentSummary,
@@ -367,7 +390,7 @@ app.get('/api/debug/analytics', async (req, res) => {
   if (process.env.NODE_ENV !== 'development') {
     return res.status(404).json({ error: 'Debug endpoint only available in development' });
   }
-  
+
   try {
     const debug = {
       environment: process.env.NODE_ENV,
@@ -378,18 +401,18 @@ app.get('/api/debug/analytics', async (req, res) => {
       cache_state: analyticsDB.cache || {},
       current_month: analyticsDB.currentMonth || null
     };
-    
+
     // Test database connection
     if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
       try {
         const { createClient } = require('@supabase/supabase-js');
         const testSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
-        
+
         const { data, error } = await testSupabase
           .from('api_requests')
           .select('count', { count: 'exact' })
           .limit(1);
-        
+
         debug.supabase_test = {
           success: !error,
           error: error?.message || null,
@@ -402,7 +425,7 @@ app.get('/api/debug/analytics', async (req, res) => {
         };
       }
     }
-    
+
     res.json(debug);
   } catch (error) {
     res.status(500).json({
@@ -415,9 +438,9 @@ app.get('/api/debug/analytics', async (req, res) => {
 // Health check endpoint (enhanced with analytics)
 app.get('/api/health', (req, res) => {
   const analyticsStatus = analyticsDB.getAnalyticsSummary();
-  
-  res.json({ 
-    status: 'healthy', 
+
+  res.json({
+    status: 'healthy',
     service: 'moleXa Educational Proxy API',
     version: '2.1.0',
     timestamp: new Date().toISOString(),
@@ -430,7 +453,7 @@ app.get('/api/health', (req, res) => {
     },
     features: [
       'PUG-REST API (computed properties)',
-      'PUG-View API (educational annotations)', 
+      'PUG-View API (educational annotations)',
       'Autocomplete suggestions',
       'Enhanced educational endpoints',
       'Selective analytics tracking',
@@ -489,10 +512,10 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
   try {
     const { identifier } = req.params;
     const identifierType = req.query.type || 'cid';
-    
+
     const cacheKey = `educational:${identifierType}:${identifier}`;
     const cachedData = cache.get(cacheKey);
-    
+
     if (cachedData) {
       console.log(`📦 Cache hit for educational data: ${identifier}`);
       res.set('X-Cache', 'HIT');
@@ -500,24 +523,24 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
     }
 
     console.log(`🎓 Fetching educational data for: ${identifier} (type: ${identifierType})`);
-    
+
     let cid = identifier;
     let encodedIdentifier = identifier; // 🔧 FIX: Declare outside the if block
-    
+
     if (identifierType !== 'cid') {
       encodedIdentifier = encodeURIComponent(identifier.toLowerCase().trim());
       console.log(`🔍 Searching for CID using ${identifierType}: ${encodedIdentifier}`);
-      
+
       // Use the identifierType directly - fastformula is already the correct endpoint
       let pubchemSearchType = identifierType;
       console.log(`🌐 Using PubChem endpoint: compound/${pubchemSearchType}/${encodedIdentifier}/cids/JSON`);
-      
+
       const cidResponse = await fetchFromPubChem(`compound/${pubchemSearchType}/${encodedIdentifier}/cids/JSON`);
       if (cidResponse.IdentifierList && cidResponse.IdentifierList.CID) {
         cid = cidResponse.IdentifierList.CID[0];
         console.log(`✅ Found CID: ${cid} for ${identifier} using ${pubchemSearchType}`);
       } else {
-        return res.status(404).json({ 
+        return res.status(404).json({
           error: 'Compound not found',
           message: `No compound found for "${identifier}" using ${identifierType} search`,
           suggestions: [
@@ -540,13 +563,13 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
       'XLogP',
       'TPSA'
     ].join(',');
-    
+
     console.log(`🧪 Fetching properties for CID: ${cid}`);
     const basicData = await fetchFromPubChem(`compound/cid/${cid}/property/${properties}/JSON`);
-    
+
     console.log(`📚 Fetching synonyms for CID: ${cid}`);
     const synonymsData = await fetchFromPubChem(`compound/cid/${cid}/synonyms/JSON`);
-    
+
     let conformerData = null;
     try {
       console.log(`🔬 Fetching 3D conformer data for CID: ${cid}`);
@@ -580,7 +603,7 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
       },
       educational_sections: [
         'Chemical and Physical Properties',
-        'Safety and Hazards', 
+        'Safety and Hazards',
         'Pharmacology and Biochemistry',
         'Use and Manufacturing',
         'Environmental Fate',
@@ -593,13 +616,13 @@ app.get('/api/pubchem/compound/:identifier/educational', async (req, res) => {
     }
 
     cache.set(cacheKey, educationalData);
-    
+
     res.set('X-Cache', 'MISS');
     res.json(educationalData);
 
   } catch (error) {
     console.error('❌ Educational data error:', error);
-    
+
     if (error.message.includes('PubChem API error: 400')) {
       res.status(400).json({
         error: 'Invalid compound search',
@@ -639,15 +662,15 @@ app.get('/api/pugview/compound/:cid/:section?', async (req, res) => {
   try {
     const { cid, section } = req.params;
     const heading = req.query.heading;
-    
+
     let pugViewPath = `data/compound/${cid}/JSON`;
     if (heading) {
       pugViewPath += `?heading=${encodeURIComponent(heading)}`;
     }
-    
+
     const cacheKey = `pugview:${cid}:${section || 'all'}:${heading || 'none'}`;
     const cachedData = cache.get(cacheKey);
-    
+
     if (cachedData) {
       console.log(`📦 Cache hit for PUG-View: ${cid}/${section || 'all'}`);
       res.set('X-Cache', 'HIT');
@@ -683,9 +706,9 @@ app.get('/api/pugview/compound/:cid/:section?', async (req, res) => {
     }
 
     const data = await response.json();
-    
+
     let educationalContent = data;
-    
+
     if (section === 'safety') {
       educationalContent = extractSafetyData(data);
     } else if (section === 'pharmacology') {
@@ -695,7 +718,7 @@ app.get('/api/pugview/compound/:cid/:section?', async (req, res) => {
     }
 
     cache.set(cacheKey, educationalContent);
-    
+
     res.set('X-Cache', 'MISS');
     res.set('X-PugView-URL', pugViewUrl);
     res.json(educationalContent);
@@ -714,10 +737,10 @@ app.get('/api/autocomplete/:query', async (req, res) => {
   try {
     const { query } = req.params;
     const limit = req.query.limit || 10;
-    
+
     const cacheKey = `autocomplete:${query}:${limit}`;
     const cachedData = autocompleteCache.get(cacheKey);
-    
+
     if (cachedData) {
       console.log(`📦 Cache hit for autocomplete: ${query}`);
       res.set('X-Cache', 'HIT');
@@ -742,7 +765,7 @@ app.get('/api/autocomplete/:query', async (req, res) => {
     }
 
     const data = await response.json();
-    
+
     const suggestions = {
       query: query,
       total: data.total || 0,
@@ -750,7 +773,7 @@ app.get('/api/autocomplete/:query', async (req, res) => {
     };
 
     autocompleteCache.set(cacheKey, suggestions);
-    
+
     res.set('X-Cache', 'MISS');
     res.json(suggestions);
 
@@ -767,12 +790,12 @@ app.get('/api/autocomplete/:query', async (req, res) => {
 app.get('/api/pugview/headings/:topic?', async (req, res) => {
   try {
     const { topic } = req.params;
-    
+
     const educationalHeadings = {
       safety: [
         'Safety and Hazards',
         'Toxicity',
-        'First Aid Measures', 
+        'First Aid Measures',
         'Fire Fighting Measures',
         'Accidental Release Measures',
         'Handling and Storage',
@@ -793,7 +816,7 @@ app.get('/api/pugview/headings/:topic?', async (req, res) => {
         'Chemical and Physical Properties',
         'Density',
         'Boiling Point',
-        'Melting Point', 
+        'Melting Point',
         'Solubility',
         'Viscosity',
         'Vapor Pressure',
@@ -832,10 +855,10 @@ app.get('/api/pubchem/*', async (req, res) => {
     const pubchemPath = req.params[0];
     const queryParams = new URLSearchParams(req.query).toString();
     const fullPath = queryParams ? `${pubchemPath}?${queryParams}` : pubchemPath;
-    
+
     const cacheKey = `pubchem:${fullPath}`;
     const cachedData = cache.get(cacheKey);
-    
+
     if (cachedData) {
       console.log(`📦 Cache hit for: ${fullPath}`);
       res.set('X-Cache', 'HIT');
@@ -867,7 +890,7 @@ app.get('/api/pubchem/*', async (req, res) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ PubChem error ${response.status}: ${errorText}`);
-      
+
       if (response.status === 404) {
         return res.status(404).json({
           error: 'Compound not found',
@@ -906,12 +929,12 @@ app.get('/api/pubchem/*', async (req, res) => {
     res.set('Content-Type', contentType);
     res.set('X-Cache', 'MISS');
     res.set('X-PubChem-URL', pubchemUrl);
-    
+
     res.send(data);
 
   } catch (error) {
     console.error('❌ Proxy error:', error);
-    
+
     if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
       return res.status(503).json({
         error: 'Network error',
@@ -940,9 +963,9 @@ app.get('/api/pubchem/*', async (req, res) => {
 async function fetchFromPubChem(path) {
   const pubchemUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/${path}`;
   console.log(`🌐 PubChem API call: ${pubchemUrl}`);
-  
+
   await new Promise(resolve => setTimeout(resolve, 200));
-  
+
   const response = await fetch(pubchemUrl, {
     headers: {
       'User-Agent': 'MoleculeStudio/1.0 (Educational Research Tool)',
@@ -960,12 +983,12 @@ async function fetchFromPubChem(path) {
     } catch (e) {
       errorDetails = 'Unable to read error details';
     }
-    
+
     throw new Error(`PubChem API error: ${response.status} - ${errorDetails}`);
   }
 
   const contentType = response.headers.get('content-type') || 'application/json';
-  
+
   if (contentType.includes('application/json')) {
     return await response.json();
   } else {
@@ -987,26 +1010,26 @@ function extractPropertiesData(data) {
 
 function addEducationalContext(properties) {
   if (!properties || !Array.isArray(properties)) return null;
-  
+
   return properties.map(prop => {
     const context = {};
-    
+
     if (prop.MolecularWeight) {
       context.molecular_weight_info = "Molecular weight affects drug absorption, distribution, and elimination. Generally, drugs with MW 150-500 Da have optimal properties.";
     }
-    
+
     if (prop.XLogP !== undefined) {
       context.xlogp_info = "XLogP measures lipophilicity. Values between 1-3 are often ideal for drug-like compounds. Higher values indicate more lipophilic (fat-loving) molecules.";
     }
-    
+
     if (prop.TPSA) {
       context.tpsa_info = "Topological Polar Surface Area affects cell membrane permeability. TPSA < 140 Ų is often associated with good oral bioavailability.";
     }
-    
+
     if (prop.HBondDonorCount !== undefined || prop.HBondAcceptorCount !== undefined) {
       context.hydrogen_bonding_info = "Hydrogen bonding affects solubility and biological activity. Lipinski's Rule suggests ≤5 donors and ≤10 acceptors for drug-like compounds.";
     }
-    
+
     return { ...prop, educational_context: context };
   });
 }
@@ -1014,7 +1037,7 @@ function addEducationalContext(properties) {
 // 📊 Initialize analytics system on startup
 async function initializeAnalytics() {
   console.log('📊 Initializing selective analytics system...');
-  
+
   if (analyticsDB.initializeCache) {
     try {
       await analyticsDB.initializeCache();
@@ -1023,7 +1046,7 @@ async function initializeAnalytics() {
       console.error('❌ Analytics initialization error:', error);
     }
   }
-  
+
   if (analyticsDB.checkAndArchivePreviousMonth) {
     try {
       await analyticsDB.checkAndArchivePreviousMonth();
@@ -1031,7 +1054,7 @@ async function initializeAnalytics() {
       console.error('❌ Auto-archival check failed:', error);
     }
   }
-  
+
   // Set up monthly archival cron job (runs at 1 AM on the 1st of each month)
   if (process.env.NODE_ENV === 'production' && analyticsDB.checkAndArchivePreviousMonth) {
     try {
